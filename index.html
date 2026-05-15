@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7f8fb" />
+  <title>Rectangle / AABB Ratio Trainer</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <h1>Rectangle / AABB Ratio Trainer</h1>
+      <p>Estimate or draw shape ratios. All answers are given as short side:long side.</p>
+    </header>
+
+    <section class="card">
+      <div class="top-bar">
+        <div class="controls">
+          <label><input id="timeMode" type="checkbox" /> Timed mode (10s)</label>
+          <label><input id="randomMode" type="checkbox" /> Random float ratio mode</label>
+          <label><input id="areaScaleMode" type="checkbox" /> Random area scale (0.3–4.0)</label>
+          <label><input id="polygonMode" type="checkbox" /> Random complex polygon mode</label>
+          <label><input id="drawMode" type="checkbox" /> Draw target ratio mode</label>
+        </div>
+
+        <div class="info">
+          <div id="modeLabel"></div>
+          <div id="timerLabel"></div>
+          <div id="scoreLabel"></div>
+        </div>
+      </div>
+
+      <h2>Shape</h2>
+
+      <div class="canvas-frame">
+        <canvas id="shapeCanvas" width="760" height="460"></canvas>
+      </div>
+
+      <div id="questionLabel" class="question"></div>
+
+      <div id="options" class="options">
+        <button class="option"></button>
+        <button class="option"></button>
+        <button class="option"></button>
+        <button class="option"></button>
+      </div>
+
+      <div class="bottom-bar">
+        <div id="feedbackLabel" class="feedback"></div>
+        <div class="nav">
+          <button id="prevBtn" class="nav-btn">Previous</button>
+          <button id="nextBtn" class="nav-btn">Next</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

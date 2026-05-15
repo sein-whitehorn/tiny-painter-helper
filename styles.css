@@ -1,0 +1,414 @@
+:root {
+  --bg-app: #f7f8fb;
+  --bg-panel: #ffffff;
+  --bg-canvas: #ffffff;
+  --text-main: #1f2937;
+  --text-sub: #6b7280;
+  --accent: #3b82f6;
+  --btn-bg: #eef2f7;
+  --btn-hover: #e3eaf5;
+  --btn-correct: #dff4df;
+  --btn-wrong: #f7dddd;
+  --border: #d6dbe6;
+
+  --page-max: 980px;
+  --canvas-ratio: 760 / 460;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 0;
+  background: var(--bg-app);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  background: var(--bg-app);
+  color: var(--text-main);
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  width: min(var(--page-max), 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(22px, 5.6vw, 24px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.header p {
+  margin: 6px 0 14px;
+  color: var(--text-sub);
+  font-size: clamp(12px, 3.3vw, 13px);
+  line-height: 1.45;
+}
+
+.card {
+  width: 100%;
+  background: var(--bg-panel);
+  border-radius: 14px;
+  padding: clamp(12px, 3.5vw, 16px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.controls {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px 14px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.controls label {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  user-select: none;
+  cursor: pointer;
+  min-height: 24px;
+}
+
+.controls input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+}
+
+.info {
+  min-width: 245px;
+  text-align: right;
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+#timerLabel {
+  margin-top: 3px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#scoreLabel {
+  margin-top: 3px;
+}
+
+h2 {
+  margin: 4px 0 8px;
+  font-size: 14px;
+}
+
+.canvas-frame {
+  width: min(100%, 762px);
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  background: var(--border);
+  overflow: hidden;
+  border-radius: 4px;
+  touch-action: none;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--canvas-ratio);
+  background: var(--bg-canvas);
+  cursor: default;
+  touch-action: none;
+}
+
+canvas.draw-mode {
+  cursor: crosshair;
+}
+
+.question {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 6px 10px;
+  font-size: clamp(14px, 3.8vw, 16px);
+  font-weight: 700;
+  line-height: 1.38;
+  text-align: center;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.option {
+  min-height: 56px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--btn-bg);
+  color: var(--text-main);
+  font-size: clamp(15px, 4.2vw, 17px);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.option:hover:not(:disabled) {
+  background: var(--btn-hover);
+}
+
+.option.correct {
+  background: var(--btn-correct);
+}
+
+.option.wrong {
+  background: var(--btn-wrong);
+}
+
+.option:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.feedback {
+  flex: 1;
+  min-height: 38px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.nav {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-btn {
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 15px;
+  background: #fff;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: var(--btn-hover);
+}
+
+.nav-btn:disabled {
+  color: #a3aab8;
+  cursor: default;
+}
+
+/* Tablet and narrow desktop */
+@media (max-width: 840px) {
+  .top-bar {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .controls {
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    font-size: 14px;
+  }
+
+  .info {
+    min-width: 0;
+    width: 100%;
+    text-align: left;
+    font-size: 12px;
+    padding-top: 2px;
+    border-top: 1px solid #eef2f7;
+  }
+
+  .options {
+    gap: 10px;
+  }
+}
+
+/* Phone */
+@media (max-width: 600px) {
+  .app {
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
+  }
+
+  .header h1 {
+    font-size: 22px;
+  }
+
+  .header p {
+    margin-bottom: 10px;
+  }
+
+  .card {
+    border-radius: 12px;
+    padding: 10px;
+  }
+
+  h2 {
+    font-size: 13px;
+  }
+
+  .canvas-frame {
+    width: 100%;
+    border-radius: 6px;
+  }
+
+  .question {
+    min-height: auto;
+    padding: 12px 4px 9px;
+    font-size: 15px;
+  }
+
+  .options {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .option {
+    min-height: 50px;
+    border-radius: 10px;
+    font-size: 16px;
+  }
+
+  .bottom-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .feedback {
+    min-height: 0;
+    font-size: 13px;
+  }
+
+  .nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .nav-btn {
+    width: 100%;
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .app {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .card {
+    padding: 8px;
+  }
+
+  .controls {
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .question {
+    font-size: 14px;
+  }
+
+  .option {
+    min-height: 48px;
+    font-size: 15px;
+  }
+}
+
+/* Landscape phones: keep the training area compact. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .app {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .header {
+    display: none;
+  }
+
+  .top-bar {
+    margin-bottom: 8px;
+  }
+
+  .controls {
+    grid-template-columns: 1fr 1fr;
+    font-size: 12px;
+    gap: 6px 10px;
+  }
+
+  .info {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  #timerLabel,
+  #scoreLabel {
+    margin-top: 0;
+  }
+
+  .question {
+    padding: 8px 4px 6px;
+  }
+
+  .option {
+    min-height: 42px;
+  }
+
+  .bottom-bar {
+    margin-top: 8px;
+  }
+}
