@@ -4,25 +4,32 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#f7f8fb" />
-  <title>Rectangle / AABB Ratio Trainer</title>
+  <title>Tiny Painting Helper</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <main class="app">
     <header class="header">
-      <h1>Rectangle / AABB Ratio Trainer</h1>
+      <h1>Tiny Painting Helper</h1>
       <p>Estimate or draw shape ratios. All answers are given as short side:long side.</p>
     </header>
 
     <section class="card">
       <div class="top-bar">
-        <div class="controls">
-          <label><input id="timeMode" type="checkbox" /> Timed mode (10s)</label>
-          <label><input id="randomMode" type="checkbox" /> Random float ratio mode</label>
-          <label><input id="areaScaleMode" type="checkbox" /> Random area scale (0.3–4.0)</label>
-          <label><input id="polygonMode" type="checkbox" /> Random complex polygon mode</label>
-          <label><input id="drawMode" type="checkbox" /> Draw target ratio mode</label>
-        </div>
+        <details id="settingsPanel" class="settings-panel">
+          <summary>
+            <span>Options</span>
+            <span id="settingsSummary" class="settings-summary">Fixed ratio set</span>
+          </summary>
+
+          <div class="controls">
+            <label><input id="timeMode" type="checkbox" /> Timed mode (10s)</label>
+            <label><input id="randomMode" type="checkbox" /> Random float ratio mode</label>
+            <label><input id="areaScaleMode" type="checkbox" /> Random area scale (0.3–4.0)</label>
+            <label><input id="polygonMode" type="checkbox" /> Random complex polygon mode</label>
+            <label class="draw-option"><input id="drawMode" type="checkbox" /> Draw target ratio mode</label>
+          </div>
+        </details>
 
         <div class="info">
           <div id="modeLabel"></div>

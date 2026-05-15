@@ -108,6 +108,9 @@ class RatioQuizApp {
     this.polygonMode = document.getElementById("polygonMode");
     this.drawMode = document.getElementById("drawMode");
 
+    this.settingsPanel = document.getElementById("settingsPanel");
+    this.settingsSummary = document.getElementById("settingsSummary");
+
     this.modeLabel = document.getElementById("modeLabel");
     this.timerLabel = document.getElementById("timerLabel");
     this.scoreLabel = document.getElementById("scoreLabel");
@@ -146,6 +149,7 @@ class RatioQuizApp {
 
     this.setupHiDPICanvas();
     this.bindEvents();
+    this.applyModeConstraints();
     this.nextQuestion();
   }
 
@@ -194,6 +198,7 @@ class RatioQuizApp {
   }
 
   onModeChange() {
+    this.applyModeConstraints();
     this.cancelTimer();
     this.cancelAutoNext();
 
@@ -206,10 +211,42 @@ class RatioQuizApp {
     this.nextQuestion();
   }
 
+  applyModeConstraints() {
+    const drawEnabled = this.drawMode.checked;
+    const exclusiveInputs = [this.areaScaleMode, this.polygonMode];
+
+    // Draw target ratio mode uses a blank canvas and one target ratio,
+    // so shape-generation options are mutually exclusive with it.
+    for (const input of exclusiveInputs) {
+      if (drawEnabled) input.checked = false;
+      input.disabled = drawEnabled;
+      input.closest("label")?.classList.toggle("disabled", drawEnabled);
+    }
+
+    this.updateSettingsSummary();
+  }
+
+  updateSettingsSummary() {
+    if (!this.settingsSummary) return;
+
+    const parts = [];
+
+    if (this.drawMode.checked) {
+      parts.push("Draw");
+    } else {
+      parts.push(this.randomMode.checked ? "Random ratio" : "Fixed ratios");
+      if (this.areaScaleMode.checked) parts.push("Area scale");
+      if (this.polygonMode.checked) parts.push("Polygon");
+    }
+
+    if (this.timeMode.checked) parts.push("Timed");
+
+    this.settingsSummary.textContent = parts.join(" · ");
+  }
+
   updateScoreLabel() {
     const accuracy = this.scoreTotal === 0 ? 0 : 100 * this.scoreCorrect / this.scoreTotal;
-    this.scoreLabel.textContent =
-      `Score: ${this.scoreCorrect}/${this.scoreTotal}   Accuracy: ${accuracy.toFixed(1)}%`;
+    this.scoreLabel.textContent = `Score: ${this.scoreCorrect}/${this.scoreTotal}   Accuracy: ${accuracy.toFixed(1)}%`;
   }
 
   updateNavButtons() {
@@ -378,6 +415,7 @@ class RatioQuizApp {
     }
 
     this.modeLabel.textContent = `Mode: ${ratioModeText} • ${scaleText} • ${shapeText}`;
+    this.updateSettingsSummary();
     this.currentDrawParams = this.generateDrawParams();
 
     this.resetOptionButtons();

@@ -1,4 +1,4 @@
-# Rectangle / AABB Ratio Trainer — Frontend JS Version
+# Tiny Painting Helper — Frontend JS Version
 
 This is a static frontend implementation of the original Python/Tkinter ratio training program.
 
@@ -88,3 +88,11 @@ The page uses responsive CSS:
 - The bottom navigation becomes two equal-width buttons on phones.
 - The drawing canvas disables default touch gestures while drawing, so drag-to-draw works on mobile browsers.
 - Safe-area padding is included for iOS-style notches.
+
+
+## Latest UI changes
+
+- The title is now `Tiny Painting Helper`.
+- The checkbox option group can be collapsed to save space, especially on mobile.
+- Draw target ratio mode disables and grays out incompatible shape-generation options.
+- The stats area only shows `Score:` and `Accuracy:`.
