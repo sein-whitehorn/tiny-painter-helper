@@ -1167,6 +1167,9 @@ function renderMarkdown(md) {
   let inList = false;
   let para = [];
 
+  let inDisplayMath = false;
+  let displayMathLines = [];
+
   function flushPara() {
     if (para.length) {
       html.push(`<p>${renderInlineMarkdown(para.join(" "))}</p>`);
@@ -1181,8 +1184,39 @@ function renderMarkdown(md) {
     }
   }
 
+  function flushDisplayMath() {
+    if (displayMathLines.length) {
+      // Do not HTML-escape TeX blocks. MathJax needs to see the raw delimiters.
+      html.push(`<div class="math-block">${displayMathLines.join("\n")}</div>`);
+      displayMathLines = [];
+    }
+  }
+
   for (const raw of lines) {
     const line = raw.trim();
+
+    if (inDisplayMath) {
+      displayMathLines.push(line);
+      if (line.includes("\\]")) {
+        inDisplayMath = false;
+        flushDisplayMath();
+      }
+      continue;
+    }
+
+    if (line.startsWith("\\[")) {
+      flushPara();
+      closeList();
+
+      displayMathLines = [line];
+
+      if (line.includes("\\]")) {
+        flushDisplayMath();
+      } else {
+        inDisplayMath = true;
+      }
+      continue;
+    }
 
     if (!line) {
       flushPara();
@@ -1221,15 +1255,11 @@ function renderMarkdown(md) {
       continue;
     }
 
-    // Keep TeX display blocks intact for MathJax.
-    if (line.startsWith("\\[") || line.endsWith("\\]")) {
-      flushPara();
-      closeList();
-      html.push(`<p>${line}</p>`);
-      continue;
-    }
-
     para.push(line);
+  }
+
+  if (inDisplayMath) {
+    flushDisplayMath();
   }
 
   flushPara();

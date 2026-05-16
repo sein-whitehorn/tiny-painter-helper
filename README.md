@@ -138,3 +138,21 @@ python -m http.server 8080
 ## Crisp canvas update
 
 The canvas backing bitmap now follows the actual displayed CSS size and device pixel ratio. This prevents blurry or fuzzy rectangle strokes when the responsive layout displays the canvas wider than its original 760px logical width.
+
+
+## Display math fix
+
+The Markdown renderer now collects multi-line display math blocks written with:
+
+```text
+\[
+...
+\]
+```
+
+and passes the whole block to MathJax. Inline math `\( ... \)` and display math are both supported.
+
+
+## Checked JavaScript syntax fix
+
+The Markdown renderer was repaired so multi-line display math blocks are supported without breaking `app.js`. The script has been checked with `node --check`.

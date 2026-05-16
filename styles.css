@@ -706,3 +706,10 @@ canvas.draw-mode {
   }
 }
 
+
+
+.math-block {
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
