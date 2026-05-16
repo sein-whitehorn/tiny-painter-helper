@@ -151,18 +151,38 @@ class RatioQuizApp {
     this.bindEvents();
     this.applyModeConstraints();
     this.nextQuestion();
+
+    // Refit once after layout is painted. This is important when CSS changes
+    // the canvas width after the initial script run.
+    requestAnimationFrame(() => {
+      this.setupHiDPICanvas();
+      this.redrawCurrent();
+    });
   }
 
   setupHiDPICanvas() {
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     this.dpr = dpr;
 
-    // Keep the logical drawing size at 760 x 460, while CSS controls the
-    // visual size responsively. This prevents horizontal overflow on phones.
-    this.canvas.width = Math.round(CONFIG.CANVAS_W * dpr);
-    this.canvas.height = Math.round(CONFIG.CANVAS_H * dpr);
+    // The app uses a logical coordinate system of 760 x 460.
+    // CSS may display the canvas at a different size, especially on desktop
+    // after making it align with the full-width option buttons.
+    //
+    // To avoid blurry strokes, the backing bitmap must match the *displayed*
+    // CSS size, not just the logical size.
+    const rect = this.canvas.getBoundingClientRect();
+    const cssW = Math.max(1, rect.width || CONFIG.CANVAS_W);
+    const cssH = Math.max(1, rect.height || cssW * CONFIG.CANVAS_H / CONFIG.CANVAS_W);
 
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.canvas.width = Math.round(cssW * dpr);
+    this.canvas.height = Math.round(cssH * dpr);
+
+    const sx = cssW / CONFIG.CANVAS_W;
+    const sy = cssH / CONFIG.CANVAS_H;
+
+    // Draw all shapes in logical coordinates. The transform maps them to the
+    // actual displayed size and device-pixel ratio.
+    this.ctx.setTransform(dpr * sx, 0, 0, dpr * sy, 0, 0);
   }
 
   bindEvents() {
@@ -181,9 +201,13 @@ class RatioQuizApp {
     this.canvas.addEventListener("pointerup", event => this.onCanvasPointerUp(event));
     this.canvas.addEventListener("pointercancel", event => this.onCanvasPointerUp(event));
 
+    this.resizeTimer = null;
     window.addEventListener("resize", () => {
-      this.setupHiDPICanvas();
-      this.redrawCurrent();
+      clearTimeout(this.resizeTimer);
+      this.resizeTimer = setTimeout(() => {
+        this.setupHiDPICanvas();
+        this.redrawCurrent();
+      }, 80);
     });
   }
 
@@ -1121,6 +1145,173 @@ class RatioQuizApp {
   }
 }
 
+
+function escapeHtml(text) {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function renderInlineMarkdown(text) {
+  let out = escapeHtml(text);
+  out = out.replace(/`([^`]+)`/g, "<code>$1</code>");
+  out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  out = out.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  return out;
+}
+
+function renderMarkdown(md) {
+  const lines = md.trim().split(/\r?\n/);
+  const html = [];
+  let inList = false;
+  let para = [];
+
+  function flushPara() {
+    if (para.length) {
+      html.push(`<p>${renderInlineMarkdown(para.join(" "))}</p>`);
+      para = [];
+    }
+  }
+
+  function closeList() {
+    if (inList) {
+      html.push("</ul>");
+      inList = false;
+    }
+  }
+
+  for (const raw of lines) {
+    const line = raw.trim();
+
+    if (!line) {
+      flushPara();
+      closeList();
+      continue;
+    }
+
+    if (line === "---") {
+      flushPara();
+      closeList();
+      html.push("<hr>");
+      continue;
+    }
+
+    if (line.startsWith("### ")) {
+      flushPara();
+      closeList();
+      html.push(`<h3>${renderInlineMarkdown(line.slice(4))}</h3>`);
+      continue;
+    }
+
+    if (line.startsWith("#### ")) {
+      flushPara();
+      closeList();
+      html.push(`<h4>${renderInlineMarkdown(line.slice(5))}</h4>`);
+      continue;
+    }
+
+    if (line.startsWith("- ")) {
+      flushPara();
+      if (!inList) {
+        html.push("<ul>");
+        inList = true;
+      }
+      html.push(`<li>${renderInlineMarkdown(line.slice(2))}</li>`);
+      continue;
+    }
+
+    // Keep TeX display blocks intact for MathJax.
+    if (line.startsWith("\\[") || line.endsWith("\\]")) {
+      flushPara();
+      closeList();
+      html.push(`<p>${line}</p>`);
+      continue;
+    }
+
+    para.push(line);
+  }
+
+  flushPara();
+  closeList();
+
+  return html.join("\n");
+}
+
+function setupHelpModal() {
+  const helpBtn = document.getElementById("helpBtn");
+  const modal = document.getElementById("helpModal");
+  const closeBtn = document.getElementById("helpCloseBtn");
+  const content = document.getElementById("helpContent");
+
+  if (!helpBtn || !modal || !closeBtn || !content) return;
+
+  let loaded = false;
+  let cachedMarkdown = "";
+
+  async function loadHelpMarkdown() {
+    if (loaded) return cachedMarkdown;
+
+    try {
+      const response = await fetch("./helper.md", { cache: "no-cache" });
+      if (!response.ok) {
+        throw new Error(`Failed to load helper.md: ${response.status}`);
+      }
+      cachedMarkdown = await response.text();
+    } catch (error) {
+      cachedMarkdown = [
+        "### Help file could not be loaded",
+        "",
+        "The app tried to read `helper.md`, but the file was not available.",
+        "",
+        "When previewing locally, use a small static server instead of opening `index.html` directly:",
+        "",
+        "`python -m http.server 8080`",
+      ].join("\n");
+      console.warn(error);
+    }
+
+    loaded = true;
+    return cachedMarkdown;
+  }
+
+  const openHelp = async () => {
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    content.innerHTML = "<p>Loading help...</p>";
+    closeBtn.focus();
+
+    const markdown = await loadHelpMarkdown();
+    content.innerHTML = renderMarkdown(markdown);
+
+    if (window.MathJax?.typesetPromise) {
+      window.MathJax.typesetPromise([content]).catch(() => {});
+    }
+  };
+
+  const closeHelp = () => {
+    modal.hidden = true;
+    document.body.style.overflow = "";
+    helpBtn.focus();
+  };
+
+  helpBtn.addEventListener("click", openHelp);
+  closeBtn.addEventListener("click", closeHelp);
+
+  modal.addEventListener("click", event => {
+    if (event.target.matches("[data-close-help]")) {
+      closeHelp();
+    }
+  });
+
+  window.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !modal.hidden) {
+      closeHelp();
+    }
+  });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
+  setupHelpModal();
   new RatioQuizApp();
 });

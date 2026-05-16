@@ -96,3 +96,45 @@ The page uses responsive CSS:
 - The checkbox option group can be collapsed to save space, especially on mobile.
 - Draw target ratio mode disables and grays out incompatible shape-generation options.
 - The stats area only shows `Score:` and `Accuracy:`.
+
+
+## Minimal stats display update
+
+- Removed the `Shape` heading above the canvas.
+- Removed the visible mode-description line such as `Mode: fixed ratio set ...`.
+- The information area now only displays `Score:` and `Accuracy:` plus the timer only when timed mode is enabled.
+
+
+## Help dialog
+
+The title row now includes a small help icon. Clicking it opens a modal dialog rendered from Markdown-like text. Math formulas are supported through MathJax, loaded from a CDN.
+
+
+## Layout cleanup update
+
+- Removed the subtitle under the title.
+- Made the help icon smaller and positioned it near the title's upper-right.
+- Made the canvas full-width so it aligns with the option buttons.
+- Vertically aligned the score/accuracy area with the options summary row.
+
+
+## Help content file
+
+The help dialog no longer stores its text inside `app.js`. It loads the content from:
+
+```text
+helper.md
+```
+
+You can edit `helper.md` directly to update the help text. Formulas written with MathJax syntax, such as `\(r_u\)` and `\[ ... \]`, are supported.
+
+When previewing locally, use a static server rather than opening `index.html` directly, because browsers may block `fetch("./helper.md")` under the `file://` protocol:
+
+```bash
+python -m http.server 8080
+```
+
+
+## Crisp canvas update
+
+The canvas backing bitmap now follows the actual displayed CSS size and device pixel ratio. This prevents blurry or fuzzy rectangle strokes when the responsive layout displays the canvas wider than its original 760px logical width.

@@ -10,7 +10,10 @@
 <body>
   <main class="app">
     <header class="header">
-      <h1>Tiny Painting Helper</h1>
+      <div class="title-row">
+        <h1>Tiny Painting Helper</h1>
+        <button id="helpBtn" class="help-btn" type="button" aria-label="Open help">?</button>
+      </div>
     </header>
 
     <section class="card">
@@ -31,13 +34,11 @@
         </details>
 
         <div class="info">
-          <div id="modeLabel"></div>
+          <div id="modeLabel" hidden></div>
           <div id="timerLabel"></div>
           <div id="scoreLabel"></div>
         </div>
       </div>
-
-      <h2>Shape</h2>
 
       <div class="canvas-frame">
         <canvas id="shapeCanvas" width="760" height="460"></canvas>
@@ -62,6 +63,30 @@
     </section>
   </main>
 
+  <div id="helpModal" class="help-modal" hidden>
+    <div class="help-backdrop" data-close-help></div>
+    <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="help-dialog-header">
+        <h2 id="helpTitle">Tiny Painting Helper Guide</h2>
+        <button id="helpCloseBtn" class="help-close-btn" type="button" aria-label="Close help">×</button>
+      </div>
+      <div id="helpContent" class="help-content markdown-body"></div>
+    </section>
+  </div>
+
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [["\\(", "\\)"]],
+        displayMath: [["\\[", "\\]"]]
+      },
+      svg: {
+        fontCache: "global"
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
