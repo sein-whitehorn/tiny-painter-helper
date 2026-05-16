@@ -156,3 +156,33 @@ and passes the whole block to MathJax. Inline math `\( ... \)` and display math 
 ## Checked JavaScript syntax fix
 
 The Markdown renderer was repaired so multi-line display math blocks are supported without breaking `app.js`. The script has been checked with `node --check`.
+
+
+## Difficulty update
+
+A difficulty selector has been added next to the Options panel:
+
+- `easy`: maximum denominator 4
+- `medium`: maximum denominator 6
+- `hard`: maximum denominator 8
+
+The selected difficulty constrains all modes:
+
+- Fixed mode samples freely from all reduced ratios within the selected denominator precision.
+- Random float mode samples a continuous random proportion from the selected range, then asks for the closest valid integer ratio.
+- Draw mode targets are also generated only from the selected difficulty range.
+
+## HTML help page
+
+The help dialog now embeds `helper.html` instead of reading `helper.md`. This makes it easier to add richer future effects, diagrams, animations, or interactive examples.
+
+
+## Cookbook tutorial page
+
+A `Cookbook` button has been added next to the title controls. It opens a modal iframe that loads:
+
+```text
+tutorial.html
+```
+
+You can edit `tutorial.html` directly to add richer tutorials, images, diagrams, animations, or interactive examples.

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tiny Painting Helper Guide</title>
+  <style>
+    :root {
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+      --border: #d6dbe6;
+      --code-bg: #f1f5f9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px 18px 20px;
+      color: var(--text-main);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+      line-height: 1.65;
+      background: #ffffff;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 16px;
+    }
+
+    h3:first-child {
+      margin-top: 0;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    ul {
+      margin: 8px 0 8px 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: var(--code-bg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 14px 0;
+    }
+
+    .math-block {
+      overflow-x: auto;
+      padding: 2px 0;
+    }
+
+    .note {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fbfcff;
+      color: var(--text-sub);
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 14px;
+        font-size: 13px;
+      }
+    }
+  </style>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [["\\(", "\\)"]],
+        displayMath: [["\\[", "\\]"]]
+      },
+      svg: {
+        fontCache: "global"
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+  <h3>What this app trains</h3>
+
+  <p>
+    Tiny Painting Helper is a small visual ratio trainer. It helps you estimate the
+    proportion of a rectangle or the axis-aligned bounding box of a polygon.
+  </p>
+
+  <p>All ratio answers are written as:</p>
+
+  <div class="math-block">
+    \[
+    \text{short side} : \text{long side}
+    \]
+  </div>
+
+  <p>So \(1:2\) and \(2:1\) are treated as the same visual proportion.</p>
+
+  <hr />
+
+  <h3>Difficulty</h3>
+
+  <p>
+    Difficulty controls the maximum denominator used by all generated ratio answers:
+  </p>
+
+  <ul>
+    <li><strong>easy</strong>: denominator precision up to 4, such as \(1:4\) or \(3:4\).</li>
+    <li><strong>medium</strong>: denominator precision up to 6.</li>
+    <li><strong>hard</strong>: denominator precision up to 8, such as \(1:8\) or \(7:8\).</li>
+  </ul>
+
+  <p>
+    Higher difficulty includes closer and harder-to-distinguish ratios.
+  </p>
+
+  <hr />
+
+  <h3>Main modes</h3>
+
+  <ul>
+    <li><strong>Fixed ratio mode</strong>: the app freely generates integer ratios under the selected difficulty.</li>
+    <li><strong>Random float ratio mode</strong>: the app samples a random continuous proportion and asks for the closest integer ratio under the selected difficulty.</li>
+    <li><strong>Random area scale</strong>: changes the overall size of the shape while keeping its ratio.</li>
+    <li><strong>Random complex polygon mode</strong>: asks for the ratio of the polygon's axis-aligned bounding box.</li>
+    <li><strong>Draw target ratio mode</strong>: drag on the canvas to draw a rectangle close to the target ratio.</li>
+  </ul>
+
+  <hr />
+
+  <h3>Draw mode scoring</h3>
+
+  <p>
+    In draw mode, the app compares your rectangle ratio \(r_u\) with the target ratio \(r_t\).
+  </p>
+
+  <p>The error is measured using log-ratio error:</p>
+
+  <div class="math-block">
+    \[
+    e = \left|\log\left(\frac{r_u}{r_t}\right)\right|
+    \]
+  </div>
+
+  <p>
+    This is more balanced than raw difference because overestimating and underestimating
+    a ratio are treated symmetrically.
+  </p>
+
+  <p>The current tolerance is:</p>
+
+  <div class="math-block">
+    \[
+    \pm 10\%
+    \]
+  </div>
+
+  <hr />
+
+  <h3>Tips</h3>
+
+  <ul>
+    <li>Focus on the <strong>short side compared with the long side</strong>, not on the absolute size.</li>
+    <li>For rotated rectangles, ignore rotation and judge the rectangle itself.</li>
+    <li>For polygon mode, judge the surrounding bounding box rather than the polygon area.</li>
+    <li>In draw mode, the blue answer box keeps your shorter side fixed and adjusts the longer side to show the exact target ratio.</li>
+  </ul>
+
+  <p class="note">
+    This file is now a normal HTML page, so future versions can add richer layout,
+    diagrams, animations, or interactive examples directly inside <code>helper.html</code>.
+  </p>
+</body>
+</html>

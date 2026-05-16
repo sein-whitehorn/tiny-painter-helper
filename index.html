@@ -13,6 +13,7 @@
       <div class="title-row">
         <h1>Tiny Painting Helper</h1>
         <button id="helpBtn" class="help-btn" type="button" aria-label="Open help">?</button>
+        <button id="cookbookBtn" class="cookbook-btn" type="button" aria-label="Open cookbook">Cookbook</button>
       </div>
     </header>
 
@@ -32,6 +33,15 @@
             <label class="draw-option"><input id="drawMode" type="checkbox" /> Draw target ratio mode</label>
           </div>
         </details>
+
+        <div class="difficulty-panel" aria-label="Difficulty">
+          <label for="difficultySelect">Difficulty</label>
+          <select id="difficultySelect">
+            <option value="easy">easy</option>
+            <option value="medium" selected>medium</option>
+            <option value="hard">hard</option>
+          </select>
+        </div>
 
         <div class="info">
           <div id="modeLabel" hidden></div>
@@ -63,6 +73,18 @@
     </section>
   </main>
 
+  <div id="cookbookModal" class="help-modal" hidden>
+    <div class="help-backdrop" data-close-cookbook></div>
+    <section class="help-dialog tutorial-dialog" role="dialog" aria-modal="true" aria-labelledby="cookbookTitle">
+      <div class="help-dialog-header">
+        <h2 id="cookbookTitle">Tiny Painting Helper Cookbook</h2>
+        <button id="cookbookCloseBtn" class="help-close-btn" type="button" aria-label="Close cookbook">×</button>
+      </div>
+      <iframe id="cookbookFrame" class="help-frame" title="Tiny Painting Helper Cookbook" src="about:blank"></iframe>
+    </section>
+  </div>
+
+
   <div id="helpModal" class="help-modal" hidden>
     <div class="help-backdrop" data-close-help></div>
     <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
@@ -70,23 +92,9 @@
         <h2 id="helpTitle">Tiny Painting Helper Guide</h2>
         <button id="helpCloseBtn" class="help-close-btn" type="button" aria-label="Close help">×</button>
       </div>
-      <div id="helpContent" class="help-content markdown-body"></div>
+      <iframe id="helpFrame" class="help-frame" title="Tiny Painting Helper Guide" src="about:blank"></iframe>
     </section>
   </div>
-
-
-  <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [["\\(", "\\)"]],
-        displayMath: [["\\[", "\\]"]]
-      },
-      svg: {
-        fontCache: "global"
-      }
-    };
-  </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

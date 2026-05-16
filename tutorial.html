@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ratio Memorization Guide</title>
+  <style>
+    :root {
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+      --border: #d6dbe6;
+      --code-bg: #f1f5f9;
+      --button-bg: #f8fafc;
+      --button-hover: #eef2f7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px 18px 22px;
+      color: var(--text-main);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+      line-height: 1.65;
+      background: #ffffff;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 19px;
+      line-height: 1.35;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 16px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    ul {
+      margin: 8px 0 8px 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: var(--code-bg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 14px 0;
+    }
+
+    .lead {
+      color: var(--text-sub);
+      margin-bottom: 10px;
+    }
+
+    .level {
+      margin: 16px 0 18px;
+    }
+
+    .level-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .level-header h3 {
+      margin: 0;
+    }
+
+    .tag {
+      display: inline-block;
+      color: var(--text-sub);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .ratio-list {
+      margin: 7px 0 8px;
+      color: var(--text-sub);
+      font-size: 13px;
+    }
+
+    .ratio-list code {
+      margin-right: 4px;
+    }
+
+    .visual-panel {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-top: 8px;
+      padding: 12px 0 4px;
+      border-top: 1px solid var(--border);
+    }
+
+    .rotate-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+
+    .rotate-controls button {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--button-bg);
+      color: var(--text-main);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .rotate-controls button:hover {
+      background: var(--button-hover);
+    }
+
+    .square-toggle {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--button-bg);
+      color: var(--text-main);
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .square-toggle:hover {
+      background: var(--button-hover);
+    }
+
+    .square-toggle.active {
+      border-color: #2563eb;
+      color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .visual-row {
+      width: 100%;
+      min-height: 136px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 12px 10px;
+      align-items: start;
+      padding: 2px 0 8px;
+      overflow: visible;
+    }
+
+    .ratio-item {
+      min-width: 0;
+      text-align: center;
+    }
+
+    .ratio-shape-stage {
+      width: 90px;
+      height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 6px;
+      overflow: visible;
+    }
+
+    .ratio-box {
+      display: block;
+      overflow: visible;
+      transform-origin: center center;
+      transition: transform 120ms ease-out;
+    }
+
+    .ratio-box .grid-line {
+      display: none;
+    }
+
+    .ratio-box.show-split .grid-line {
+      display: block;
+    }
+
+    .ratio-label {
+      color: var(--text-sub);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .note {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fbfcff;
+      color: var(--text-sub);
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 14px;
+        font-size: 13px;
+      }
+
+      .level-header {
+        display: block;
+      }
+
+      .tag {
+        margin-top: 2px;
+      }
+
+      .visual-panel {
+        gap: 8px;
+      }
+
+      .visual-row {
+        grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+        gap: 10px 6px;
+        min-height: auto;
+      }
+
+      .ratio-shape-stage {
+        width: 72px;
+        height: 88px;
+      }
+
+      .rotate-controls button {
+        width: 22px;
+        height: 22px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Ratio Memorization Guide for Drawing</h2>
+
+  <p class="lead">
+    This page introduces a teaser row of anchor ratios followed by three levels of visual ratio memorization from <code>1:2</code>
+    to <code>1:1</code>. All ratios are written as <code>short side : long side</code>,
+    so rotation does not change the answer. The square button beside each row toggles blue dashed square-grid subdivisions.
+  </p>
+
+  <section id="levels"></section>
+
+  <hr />
+
+  <p class="note">
+    Suggested use: scan the teaser first to build anchor points, memorize Level 1 next, use Level 2 for daily drawing practice,
+    and use Level 3 only when you want finer visual calibration. The goal is not
+    mathematical perfection, but stable visual judgment.
+  </p>
+
+  <script>
+    const levels = [
+      {
+        id: "teaser",
+        title: "Teaser: Anchor ratios",
+        tag: "from very slender to square",
+        description:
+          "These anchor ratios give a quick overview of the full visual range. Ratios such as 1:8, 1:4, and 1:3 are not hard to distinguish, but they are useful as outer reference points before practicing finer ratios.",
+        ratios: [[1, 8], [1, 6], [1, 5], [1, 4], [1, 3], [1, 2], [1, 1]],
+        angle: 0
+      },
+      {
+        id: "basic",
+        title: "Level 1: Basic core ratios",
+        tag: "denominator precision up to 4",
+        description:
+          "These are the most important integer ratios. They form a simple visual ladder from a narrow rectangle to a square.",
+        ratios: [[1, 2], [2, 3], [3, 4], [1, 1]],
+        angle: 0
+      },
+      {
+        id: "daily",
+        title: "Level 2: Recommended daily set",
+        tag: "denominator precision up to 6",
+        description:
+          "This set adds intermediate ratios such as 3:5, 4:5, and 5:6. It is already enough for most practical drawing observation.",
+        ratios: [[1, 2], [3, 5], [2, 3], [3, 4], [4, 5], [5, 6], [1, 1]],
+        angle: 0
+      },
+      {
+        id: "fine",
+        title: "Level 3: Fine calibration set",
+        tag: "denominator precision up to 8 / 10",
+        description:
+          "This set adds finer visual marks such as 4:7, 5:8, and 7:8. The 5:8 ratio is also close to the inverse golden ratio.",
+        ratios: [[1, 2], [4, 7], [3, 5], [5, 8], [2, 3], [3, 4], [4, 5], [5, 6], [7, 8], [1, 1]],
+        angle: 0
+      }
+    ];
+
+    function ratioText([a, b]) {
+      return `${a}:${b}`;
+    }
+
+    function ratioValue([a, b]) {
+      return a / b;
+    }
+
+    function createRatioSvg(ratio, levelId, options = {}) {
+      const longSidePx = options.longSidePx || 62;
+      const [shortUnit, longUnit] = ratio;
+      const shortSidePx = longSidePx * (shortUnit / longUnit);
+      const ns = "http://www.w3.org/2000/svg";
+
+      const svg = document.createElementNS(ns, "svg");
+      svg.classList.add("ratio-box");
+      svg.dataset.levelId = levelId;
+      svg.setAttribute("viewBox", `0 0 ${shortUnit} ${longUnit}`);
+      svg.setAttribute("width", String(shortSidePx));
+      svg.setAttribute("height", String(longSidePx));
+      svg.setAttribute("preserveAspectRatio", "none");
+      svg.setAttribute("aria-hidden", "true");
+
+      const outer = document.createElementNS(ns, "rect");
+      outer.setAttribute("x", "0");
+      outer.setAttribute("y", "0");
+      outer.setAttribute("width", String(shortUnit));
+      outer.setAttribute("height", String(longUnit));
+      outer.setAttribute("fill", "none");
+      outer.setAttribute("stroke", "#111827");
+      outer.setAttribute("stroke-width", "1");
+      outer.setAttribute("vector-effect", "non-scaling-stroke");
+      svg.appendChild(outer);
+
+      for (let xIndex = 1; xIndex < shortUnit; xIndex += 1) {
+        const line = document.createElementNS(ns, "line");
+        line.classList.add("grid-line");
+        line.setAttribute("x1", String(xIndex));
+        line.setAttribute("y1", "0");
+        line.setAttribute("x2", String(xIndex));
+        line.setAttribute("y2", String(longUnit));
+        line.setAttribute("stroke", "#2563eb");
+        line.setAttribute("stroke-width", "1");
+        line.setAttribute("stroke-dasharray", "3 2");
+        line.setAttribute("vector-effect", "non-scaling-stroke");
+        svg.appendChild(line);
+      }
+
+      for (let yIndex = 1; yIndex < longUnit; yIndex += 1) {
+        const line = document.createElementNS(ns, "line");
+        line.classList.add("grid-line");
+        line.setAttribute("x1", "0");
+        line.setAttribute("y1", String(yIndex));
+        line.setAttribute("x2", String(shortUnit));
+        line.setAttribute("y2", String(yIndex));
+        line.setAttribute("stroke", "#2563eb");
+        line.setAttribute("stroke-width", "1");
+        line.setAttribute("stroke-dasharray", "3 2");
+        line.setAttribute("vector-effect", "non-scaling-stroke");
+        svg.appendChild(line);
+      }
+
+      return svg;
+    }
+
+    function createRatioItem(ratio, levelId, options = {}) {
+      const item = document.createElement("div");
+      item.className = "ratio-item";
+
+      const stage = document.createElement("div");
+      stage.className = "ratio-shape-stage";
+
+      const box = createRatioSvg(ratio, levelId, options);
+
+      const label = document.createElement("div");
+      label.className = "ratio-label";
+      label.textContent = ratioText(ratio);
+
+      stage.appendChild(box);
+      item.appendChild(stage);
+      item.appendChild(label);
+      return item;
+    }
+
+    function updateRotation(levelId, angle) {
+      document.querySelectorAll(`.ratio-box[data-level-id="${levelId}"]`).forEach((box) => {
+        box.style.transform = `rotate(${angle}deg)`;
+      });
+    }
+
+    function rotateLevel(levelId, delta) {
+      const level = levels.find((entry) => entry.id === levelId);
+      if (!level) return;
+      level.angle = (level.angle + delta + 360) % 360;
+      updateRotation(levelId, level.angle);
+    }
+
+    function toggleSplit(levelId, button) {
+      const active = !button.classList.contains("active");
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+      document.querySelectorAll(`.ratio-box[data-level-id="${levelId}"]`).forEach((box) => {
+        box.classList.toggle("show-split", active);
+      });
+    }
+
+    function createLevel(level) {
+      const section = document.createElement("section");
+      section.className = "level";
+
+      const header = document.createElement("div");
+      header.className = "level-header";
+
+      const title = document.createElement("h3");
+      title.textContent = level.title;
+
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = level.tag;
+
+      header.appendChild(title);
+      header.appendChild(tag);
+
+      const desc = document.createElement("p");
+      desc.textContent = level.description;
+
+      const ratioList = document.createElement("div");
+      ratioList.className = "ratio-list";
+      level.ratios.forEach((ratio) => {
+        const code = document.createElement("code");
+        code.textContent = ratioText(ratio);
+        ratioList.appendChild(code);
+      });
+
+      const panel = document.createElement("div");
+      panel.className = "visual-panel";
+
+      const controls = document.createElement("div");
+      controls.className = "rotate-controls";
+
+      const plus = document.createElement("button");
+      plus.type = "button";
+      plus.textContent = "+";
+      plus.title = "Rotate clockwise";
+      plus.addEventListener("click", () => rotateLevel(level.id, 5));
+
+      const minus = document.createElement("button");
+      minus.type = "button";
+      minus.textContent = "−";
+      minus.title = "Rotate counterclockwise";
+      minus.addEventListener("click", () => rotateLevel(level.id, -5));
+
+      const square = document.createElement("button");
+      square.type = "button";
+      square.className = "square-toggle";
+      square.textContent = "□";
+      square.title = "Toggle square subdivision";
+      square.setAttribute("aria-label", "Toggle square subdivision");
+      square.setAttribute("aria-pressed", "false");
+      square.addEventListener("click", () => toggleSplit(level.id, square));
+
+      controls.appendChild(plus);
+      controls.appendChild(minus);
+      controls.appendChild(square);
+
+      const visualRow = document.createElement("div");
+      visualRow.className = "visual-row";
+      level.ratios.forEach((ratio) => {
+        visualRow.appendChild(createRatioItem(ratio, level.id));
+      });
+
+      panel.appendChild(controls);
+      panel.appendChild(visualRow);
+
+      section.appendChild(header);
+      section.appendChild(desc);
+      section.appendChild(ratioList);
+      section.appendChild(panel);
+      return section;
+    }
+
+    function render() {
+      const root = document.getElementById("levels");
+      levels.forEach((level) => {
+        root.appendChild(createLevel(level));
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>

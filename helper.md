@@ -3,9 +3,11 @@
 Tiny Painting Helper is a small visual ratio trainer. It helps you estimate the proportion of a rectangle or the axis-aligned bounding box of a polygon.
 
 All ratio answers are written as:
-$$
+
+\[
 \text{short side} : \text{long side}
-$$
+\]
+
 So \(1:2\) and \(2:1\) are treated as the same visual proportion.
 
 ---
@@ -26,19 +28,13 @@ In draw mode, the app compares your rectangle ratio \(r_u\) with the target rati
 
 The error is measured using log-ratio error:
 
-$$
+\[
 e = \left|\log\left(\frac{r_u}{r_t}\right)\right|
-$$
-
+\]
 
 This is more balanced than raw difference because overestimating and underestimating a ratio are treated symmetrically.
 
-The current tolerance is:
-
-$$
-\pm 10\%
-$$
-
+The current tolerance is: \[\pm 10\%\]
 
 ---
 

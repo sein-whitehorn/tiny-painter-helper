@@ -48,6 +48,12 @@ const FIXED_RATIOS = [
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
+const DIFFICULTY_MAX_DEN = {
+  easy: 4,
+  medium: 6,
+  hard: 8,
+};
+
 function gcd(a, b) {
   a = Math.abs(a);
   b = Math.abs(b);
@@ -107,6 +113,7 @@ class RatioQuizApp {
     this.areaScaleMode = document.getElementById("areaScaleMode");
     this.polygonMode = document.getElementById("polygonMode");
     this.drawMode = document.getElementById("drawMode");
+    this.difficultySelect = document.getElementById("difficultySelect");
 
     this.settingsPanel = document.getElementById("settingsPanel");
     this.settingsSummary = document.getElementById("settingsSummary");
@@ -189,6 +196,8 @@ class RatioQuizApp {
     [this.timeMode, this.randomMode, this.areaScaleMode, this.polygonMode, this.drawMode]
       .forEach(input => input.addEventListener("change", () => this.onModeChange()));
 
+    this.difficultySelect.addEventListener("change", () => this.onModeChange());
+
     this.optionButtons.forEach((btn, idx) => {
       btn.addEventListener("click", () => this.onAnswer(idx));
     });
@@ -254,6 +263,7 @@ class RatioQuizApp {
     if (!this.settingsSummary) return;
 
     const parts = [];
+    parts.push(this.getDifficultyName());
 
     if (this.drawMode.checked) {
       parts.push("Draw");
@@ -266,6 +276,36 @@ class RatioQuizApp {
     if (this.timeMode.checked) parts.push("Timed");
 
     this.settingsSummary.textContent = parts.join(" · ");
+  }
+
+  getDifficultyName() {
+    return this.difficultySelect?.value || "medium";
+  }
+
+  getDifficultyMaxDen() {
+    const name = this.getDifficultyName();
+    return DIFFICULTY_MAX_DEN[name] || DIFFICULTY_MAX_DEN.medium;
+  }
+
+  getDifficultyRatioCandidates() {
+    return this.buildIntegerRatioCandidates(null, this.getDifficultyMaxDen());
+  }
+
+  sampleRawRatioForDifficulty() {
+    const maxDen = this.getDifficultyMaxDen();
+
+    for (let i = 0; i < 32; ++i) {
+      const w = Math.random() * maxDen;
+      const v = Math.random() * maxDen;
+      const longSide = Math.max(w, v);
+      const shortSide = Math.min(w, v);
+
+      if (longSide > 1e-6 && shortSide > 1e-6) {
+        return shortSide / longSide;
+      }
+    }
+
+    return 1.0;
   }
 
   updateScoreLabel() {
@@ -467,15 +507,18 @@ class RatioQuizApp {
   }
 
   generateFixedQuestion() {
-    const correctPair = choice(FIXED_RATIOS);
+    const candidates = this.getDifficultyRatioCandidates();
+    const correctPair = choice(candidates);
     this.currentRatio = correctPair[0] / correctPair[1];
 
-    const candidates = FIXED_RATIOS
+    const wrongPool = candidates
       .filter(p => !samePair(p, correctPair))
       .sort((p, q) => Math.abs(p[0] / p[1] - this.currentRatio) -
                       Math.abs(q[0] / q[1] - this.currentRatio));
 
-    const wrongs = sample(candidates.slice(0, 5), 2);
+    const wrongCount = Math.min(2, wrongPool.length);
+    const wrongs = sample(wrongPool.slice(0, Math.min(8, wrongPool.length)), wrongCount);
+
     this.currentOptions = shuffle([...wrongs, correctPair]);
     this.correctIndex = this.currentOptions.findIndex(p => samePair(p, correctPair));
 
@@ -487,11 +530,13 @@ class RatioQuizApp {
   }
 
   generateRandomQuestion() {
-    this.currentRatio = rand(0.1, 1.0);
+    this.currentRatio = this.sampleRawRatioForDifficulty();
 
-    const candidates = this.buildIntegerRatioCandidates(this.currentRatio, 12);
+    const candidates = this.buildIntegerRatioCandidates(this.currentRatio, this.getDifficultyMaxDen());
     const correctPair = candidates[0];
-    const wrongs = sample(candidates.slice(1, 10), 3);
+    const wrongPool = candidates.slice(1);
+
+    const wrongs = sample(wrongPool.slice(0, Math.min(10, wrongPool.length)), 3);
 
     this.currentOptions = shuffle([...wrongs, correctPair]);
     this.correctIndex = this.currentOptions.findIndex(p => samePair(p, correctPair));
@@ -507,11 +552,11 @@ class RatioQuizApp {
     let correctPair;
 
     if (this.randomMode.checked) {
-      const rawRatio = rand(0.1, 1.0);
-      const candidates = this.buildIntegerRatioCandidates(rawRatio, 12);
+      const rawRatio = this.sampleRawRatioForDifficulty();
+      const candidates = this.buildIntegerRatioCandidates(rawRatio, this.getDifficultyMaxDen());
       correctPair = candidates[0];
     } else {
-      correctPair = choice(FIXED_RATIOS);
+      correctPair = choice(this.getDifficultyRatioCandidates());
     }
 
     this.currentOptions = [correctPair];
@@ -526,7 +571,7 @@ class RatioQuizApp {
     this.questionLabel.textContent = this.currentQuestionText;
   }
 
-  buildIntegerRatioCandidates(targetRatio, maxDen = 12) {
+  buildIntegerRatioCandidates(targetRatio = null, maxDen = 6) {
     const pairs = [];
     const seen = new Set();
 
@@ -538,16 +583,26 @@ class RatioQuizApp {
         seen.add(key);
 
         const value = ra / rb;
-        const diff = Math.abs(value - targetRatio);
-        pairs.push({ pair: [ra, rb], diff });
+        const diff = targetRatio === null ? 0 : Math.abs(value - targetRatio);
+        pairs.push({ pair: [ra, rb], diff, value });
       }
     }
 
-    pairs.sort((x, y) => {
-      if (x.diff !== y.diff) return x.diff - y.diff;
-      if (x.pair[1] !== y.pair[1]) return x.pair[1] - y.pair[1];
-      return x.pair[0] - y.pair[0];
-    });
+    if (targetRatio === null) {
+      // Fixed mode is now a free integer-combination pool under the selected
+      // denominator precision. Order is stable; the actual question samples
+      // from this pool randomly.
+      pairs.sort((x, y) => {
+        if (x.pair[1] !== y.pair[1]) return x.pair[1] - y.pair[1];
+        return x.pair[0] - y.pair[0];
+      });
+    } else {
+      pairs.sort((x, y) => {
+        if (x.diff !== y.diff) return x.diff - y.diff;
+        if (x.pair[1] !== y.pair[1]) return x.pair[1] - y.pair[1];
+        return x.pair[0] - y.pair[0];
+      });
+    }
 
     return pairs.map(item => item.pair);
   }
@@ -1272,51 +1327,21 @@ function setupHelpModal() {
   const helpBtn = document.getElementById("helpBtn");
   const modal = document.getElementById("helpModal");
   const closeBtn = document.getElementById("helpCloseBtn");
-  const content = document.getElementById("helpContent");
+  const frame = document.getElementById("helpFrame");
 
-  if (!helpBtn || !modal || !closeBtn || !content) return;
+  if (!helpBtn || !modal || !closeBtn || !frame) return;
 
   let loaded = false;
-  let cachedMarkdown = "";
 
-  async function loadHelpMarkdown() {
-    if (loaded) return cachedMarkdown;
-
-    try {
-      const response = await fetch("./helper.md", { cache: "no-cache" });
-      if (!response.ok) {
-        throw new Error(`Failed to load helper.md: ${response.status}`);
-      }
-      cachedMarkdown = await response.text();
-    } catch (error) {
-      cachedMarkdown = [
-        "### Help file could not be loaded",
-        "",
-        "The app tried to read `helper.md`, but the file was not available.",
-        "",
-        "When previewing locally, use a small static server instead of opening `index.html` directly:",
-        "",
-        "`python -m http.server 8080`",
-      ].join("\n");
-      console.warn(error);
+  const openHelp = () => {
+    if (!loaded) {
+      frame.src = "./helper.html";
+      loaded = true;
     }
 
-    loaded = true;
-    return cachedMarkdown;
-  }
-
-  const openHelp = async () => {
     modal.hidden = false;
     document.body.style.overflow = "hidden";
-    content.innerHTML = "<p>Loading help...</p>";
     closeBtn.focus();
-
-    const markdown = await loadHelpMarkdown();
-    content.innerHTML = renderMarkdown(markdown);
-
-    if (window.MathJax?.typesetPromise) {
-      window.MathJax.typesetPromise([content]).catch(() => {});
-    }
   };
 
   const closeHelp = () => {
@@ -1341,7 +1366,52 @@ function setupHelpModal() {
   });
 }
 
+
+function setupCookbookModal() {
+  const cookbookBtn = document.getElementById("cookbookBtn");
+  const modal = document.getElementById("cookbookModal");
+  const closeBtn = document.getElementById("cookbookCloseBtn");
+  const frame = document.getElementById("cookbookFrame");
+
+  if (!cookbookBtn || !modal || !closeBtn || !frame) return;
+
+  let loaded = false;
+
+  const openCookbook = () => {
+    if (!loaded) {
+      frame.src = "./tutorial.html";
+      loaded = true;
+    }
+
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    closeBtn.focus();
+  };
+
+  const closeCookbook = () => {
+    modal.hidden = true;
+    document.body.style.overflow = "";
+    cookbookBtn.focus();
+  };
+
+  cookbookBtn.addEventListener("click", openCookbook);
+  closeBtn.addEventListener("click", closeCookbook);
+
+  modal.addEventListener("click", event => {
+    if (event.target.matches("[data-close-cookbook]")) {
+      closeCookbook();
+    }
+  });
+
+  window.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !modal.hidden) {
+      closeCookbook();
+    }
+  });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   setupHelpModal();
+  setupCookbookModal();
   new RatioQuizApp();
 });
