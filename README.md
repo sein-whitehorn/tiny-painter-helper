@@ -1,32 +1,63 @@
-# Tiny Painting Helper — Frontend JS Version
+# Tiny Painting Helper
 
-This is a static frontend implementation of the original Python/Tkinter ratio training program.
+Tiny Painting Helper is a lightweight browser-based practice tool for training visual proportion judgment. It is designed for drawing practice, ratio estimation, and quick perceptual warm-ups.
 
-## Files
-
-```text
-ratio-trainer-js
-├── index.html
-├── styles.css
-├── app.js
-└── README.md
-```
+The app runs entirely as a static frontend. No backend, database, build step, or package installation is required.
 
 ## Features
 
-- Fixed ratio mode
-- Random float ratio mode
-- Timed mode
-- Random area scaling
-- Rotated rectangle questions
-- Random complex polygon AABB questions
-- Draw target ratio mode
-- Previous / next navigation
-- Canvas-based rendering with high-DPI support
+- **Ratio estimation**
+  - Estimate short-side to long-side proportions.
+  - Supports fixed-ratio questions and random-ratio questions.
+
+- **Difficulty levels**
+  - `easy`: denominator precision up to 4.
+  - `medium`: denominator precision up to 6.
+  - `hard`: denominator precision up to 8.
+
+- **Shape modes**
+  - Rectangle ratio estimation.
+  - Impossible mode for harder irregular-shape / constrained tasks.
+  - Line mode for comparing two line lengths.
+
+- **Draw mode**
+  - Draw a rectangle close to a target ratio.
+  - In Line mode, the app gives one colored reference line and asks you to draw the missing line.
+  - Red indicates the short side; blue indicates the long side.
+  - In Impossible mode with Line + Draw mode, the drag start point can be restricted to a gray dashed region, while the endpoint may go outside.
+
+- **Answer visualization**
+  - Correct and incorrect choices are highlighted after answering.
+  - Rectangle draw mode shows the exact target rectangle.
+  - Line mode shows red/blue segmented ratio guides.
+
+- **Practice controls**
+  - Previous / Next navigation.
+  - Optional timed mode.
+  - Optional random scale.
+  - Collapsible options panel for small screens.
+
+- **Documentation dialogs**
+  - `helper.html` provides the in-app Help page.
+  - `tutorial.html` provides the in-app Cookbook page.
+
+## Directory structure
+
+```text
+.
+├── index.html       # Main app page
+├── styles.css       # App layout and visual styling
+├── app.js           # Core quiz logic and canvas rendering
+├── helper.html      # Help dialog content
+├── tutorial.html    # Cookbook dialog content
+└── README.md
+```
 
 ## Local preview
 
-Open `index.html` directly in a browser, or run a local static server:
+Because the app loads `helper.html` and `tutorial.html` as local pages, it is best to run it through a small static server rather than opening `index.html` directly.
+
+From the project directory:
 
 ```bash
 python -m http.server 8080
@@ -40,25 +71,25 @@ http://localhost:8080
 
 ## Deployment
 
-Because this is a pure static frontend, you can deploy the whole folder to any static server.
+Tiny Painting Helper is a static site. Upload the project files to any static hosting service.
+
+Suitable options include:
+
+- Nginx / Apache static hosting
+- GitHub Pages
+- Netlify
+- Vercel
+- Cloudflare Pages
+- Any object-storage static site hosting
 
 ### Nginx example
-
-Copy the folder to your web root:
-
-```bash
-sudo mkdir -p /var/www/ratio-trainer
-sudo cp -r ./* /var/www/ratio-trainer/
-```
-
-Example Nginx config:
 
 ```nginx
 server {
     listen 80;
     server_name your-domain.com;
 
-    root /var/www/ratio-trainer;
+    root /var/www/tiny-painting-helper;
     index index.html;
 
     location / {
@@ -67,122 +98,116 @@ server {
 }
 ```
 
-Reload Nginx:
+Then copy the files:
 
 ```bash
+sudo mkdir -p /var/www/tiny-painting-helper
+sudo cp -r ./* /var/www/tiny-painting-helper/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### GitHub Pages / Vercel / Netlify
+## How to use
 
-Upload `index.html`, `styles.css`, and `app.js` as a static site. No backend is required.
+1. Open the app in a browser.
+2. Choose a difficulty level: `easy`, `medium`, or `hard`.
+3. Open the `Options` panel to select practice modes.
+4. Answer the question by choosing one of the ratio options, or by drawing when Draw mode is enabled.
+5. Use `Next` to continue and `Previous` to review earlier questions.
+6. Use the Help and Cookbook buttons near the title for in-app guidance.
 
+## Mode guide
 
-## Mobile UI adaptation
+### Fixed ratio mode
 
-The page uses responsive CSS:
+The app samples a reduced integer ratio from the selected difficulty range. You choose the closest matching answer.
 
-- The canvas scales to the available screen width while preserving the internal 760×460 coordinate system.
-- Options collapse from a 2-column layout to a single-column touch-friendly layout on phones.
-- The bottom navigation becomes two equal-width buttons on phones.
-- The drawing canvas disables default touch gestures while drawing, so drag-to-draw works on mobile browsers.
-- Safe-area padding is included for iOS-style notches.
+### Random float ratio mode
 
+The app samples a random continuous ratio and asks you to choose the closest valid integer ratio under the selected difficulty.
 
-## Latest UI changes
+### Random scale
 
-- The title is now `Tiny Painting Helper`.
-- The checkbox option group can be collapsed to save space, especially on mobile.
-- Draw target ratio mode disables and grays out incompatible shape-generation options.
-- The stats area only shows `Score:` and `Accuracy:`.
+Random scale changes the overall size of the generated visual target while preserving its ratio.
 
+### Impossible mode
 
-## Minimal stats display update
+Impossible mode makes the task harder. Depending on the active mode, it may introduce irregular shapes or additional constraints such as a restricted start region for line drawing.
 
-- Removed the `Shape` heading above the canvas.
-- Removed the visible mode-description line such as `Mode: fixed ratio set ...`.
-- The information area now only displays `Score:` and `Accuracy:` plus the timer only when timed mode is enabled.
+### Line mode
 
+Line mode replaces rectangle comparison with line-length comparison. In normal Line mode, two line segments are generated and you estimate their short-to-long ratio.
 
-## Help dialog
+When combined with Draw mode, the app gives one reference line:
 
-The title row now includes a small help icon. Clicking it opens a modal dialog rendered from Markdown-like text. Math formulas are supported through MathJax, loaded from a CDN.
+- Red reference line: the given line is the short side.
+- Blue reference line: the given line is the long side.
 
+You draw the missing line in black.
 
-## Layout cleanup update
+### Draw target ratio mode
 
-- Removed the subtitle under the title.
-- Made the help icon smaller and positioned it near the title's upper-right.
-- Made the canvas full-width so it aligns with the option buttons.
-- Vertically aligned the score/accuracy area with the options summary row.
-
-
-## Help content file
-
-The help dialog no longer stores its text inside `app.js`. It loads the content from:
+Draw mode asks you to manually draw a target proportion. The app evaluates the result using log-ratio error:
 
 ```text
-helper.md
+error = | log(user_ratio / target_ratio) |
 ```
 
-You can edit `helper.md` directly to update the help text. Formulas written with MathJax syntax, such as `\(r_u\)` and `\[ ... \]`, are supported.
+This treats overestimation and underestimation symmetrically.
 
-When previewing locally, use a static server rather than opening `index.html` directly, because browsers may block `fetch("./helper.md")` under the `file://` protocol:
+## Customizing the app
 
-```bash
-python -m http.server 8080
-```
+### Edit the help page
 
-
-## Crisp canvas update
-
-The canvas backing bitmap now follows the actual displayed CSS size and device pixel ratio. This prevents blurry or fuzzy rectangle strokes when the responsive layout displays the canvas wider than its original 760px logical width.
-
-
-## Display math fix
-
-The Markdown renderer now collects multi-line display math blocks written with:
+Modify:
 
 ```text
-\[
-...
-\]
+helper.html
 ```
 
-and passes the whole block to MathJax. Inline math `\( ... \)` and display math are both supported.
+This page is displayed inside the Help dialog. It is a normal HTML file, so you can add richer layout, formulas, images, or interactive examples.
 
+### Edit the cookbook page
 
-## Checked JavaScript syntax fix
-
-The Markdown renderer was repaired so multi-line display math blocks are supported without breaking `app.js`. The script has been checked with `node --check`.
-
-
-## Difficulty update
-
-A difficulty selector has been added next to the Options panel:
-
-- `easy`: maximum denominator 4
-- `medium`: maximum denominator 6
-- `hard`: maximum denominator 8
-
-The selected difficulty constrains all modes:
-
-- Fixed mode samples freely from all reduced ratios within the selected denominator precision.
-- Random float mode samples a continuous random proportion from the selected range, then asks for the closest valid integer ratio.
-- Draw mode targets are also generated only from the selected difficulty range.
-
-## HTML help page
-
-The help dialog now embeds `helper.html` instead of reading `helper.md`. This makes it easier to add richer future effects, diagrams, animations, or interactive examples.
-
-
-## Cookbook tutorial page
-
-A `Cookbook` button has been added next to the title controls. It opens a modal iframe that loads:
+Modify:
 
 ```text
 tutorial.html
 ```
 
-You can edit `tutorial.html` directly to add richer tutorials, images, diagrams, animations, or interactive examples.
+This page is displayed inside the Cookbook dialog and can be expanded into a fuller tutorial.
+
+### Adjust ratios or difficulty
+
+The main logic is in:
+
+```text
+app.js
+```
+
+Useful constants are near the top of the file, including difficulty precision, drawing tolerance, and canvas settings.
+
+### Adjust styling
+
+Modify:
+
+```text
+styles.css
+```
+
+The layout is responsive and includes mobile-friendly controls, collapsible options, and touch drawing support.
+
+## Browser support
+
+The app uses standard browser APIs:
+
+- HTML Canvas
+- Pointer Events
+- CSS responsive layout
+- Static iframe content for Help and Cookbook dialogs
+
+Modern versions of Chrome, Edge, Firefox, and Safari should work.
+
+## License
+
+Add your preferred license here, for example MIT, Apache-2.0, or a custom research/demo license.
