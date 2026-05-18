@@ -16,15 +16,22 @@ const CONFIG = {
   POLYGON_MIN_SIDES: 3,
   POLYGON_MAX_SIDES: 10,
 
+  MIN_VISIBLE_LINE_LENGTH: 42,
+  MAX_VISIBLE_LINE_LENGTH: 360,
+
   DRAW_TOLERANCE: 0.10,
 
   BG_CANVAS: "#ffffff",
   RECT_COLOR: "#111111",
   POLYGON_FILL: "#f9fafb",
   BBOX_COLOR: "#94a3b8",
+  RESTRICT_BOX_COLOR: "#94a3b8",
   USER_BOX_COLOR: "#111111",
   ANSWER_BOX_COLOR: "#2563eb",
   LIGHT_ANSWER_GUIDE_COLOR: "#93c5fd",
+  LINE_GUIDE_COLOR: "#2563eb",
+  LINE_SHORT_COLOR: "#ef4444",
+  LINE_LONG_COLOR: "#2563eb",
   CENTER_MARK: "#9aa3b2",
 
   BTN_CORRECT_CLASS: "correct",
@@ -112,6 +119,7 @@ class RatioQuizApp {
     this.randomMode = document.getElementById("randomMode");
     this.areaScaleMode = document.getElementById("areaScaleMode");
     this.polygonMode = document.getElementById("polygonMode");
+    this.lineMode = document.getElementById("lineMode");
     this.drawMode = document.getElementById("drawMode");
     this.difficultySelect = document.getElementById("difficultySelect");
 
@@ -150,6 +158,10 @@ class RatioQuizApp {
     this.dragCurrent = null;
     this.userDrawBox = null;
     this.answerDrawBox = null;
+    this.userDrawLine = null;
+    this.answerDrawLine = null;
+    this.userDrawLine = null;
+    this.answerDrawLine = null;
 
     this.history = [];
     this.historyIndex = -1;
@@ -163,7 +175,7 @@ class RatioQuizApp {
     // the canvas width after the initial script run.
     requestAnimationFrame(() => {
       this.setupHiDPICanvas();
-      this.redrawCurrent();
+      this.renderCurrentQuestionCanvas(this.locked);
     });
   }
 
@@ -193,7 +205,8 @@ class RatioQuizApp {
   }
 
   bindEvents() {
-    [this.timeMode, this.randomMode, this.areaScaleMode, this.polygonMode, this.drawMode]
+    [this.timeMode, this.randomMode, this.areaScaleMode, this.polygonMode, this.lineMode, this.drawMode]
+      .filter(Boolean)
       .forEach(input => input.addEventListener("change", () => this.onModeChange()));
 
     this.difficultySelect.addEventListener("change", () => this.onModeChange());
@@ -245,19 +258,26 @@ class RatioQuizApp {
   }
 
   applyModeConstraints() {
-    const drawEnabled = this.drawMode.checked;
-    const exclusiveInputs = [this.areaScaleMode, this.polygonMode];
+    const drawEnabled = !!this.drawMode?.checked;
 
-    // Draw target ratio mode uses a blank canvas and one target ratio,
-    // so shape-generation options are mutually exclusive with it.
+    // Draw mode is compatible with Line mode and Impossible mode.
+    // Only random scaling is disabled because draw-mode sizes are user-generated.
+    const exclusiveInputs = [this.areaScaleMode].filter(Boolean);
+
     for (const input of exclusiveInputs) {
       if (drawEnabled) input.checked = false;
       input.disabled = drawEnabled;
       input.closest("label")?.classList.toggle("disabled", drawEnabled);
     }
 
+    for (const input of [this.polygonMode, this.lineMode].filter(Boolean)) {
+      input.disabled = false;
+      input.closest("label")?.classList.remove("disabled");
+    }
+
     this.updateSettingsSummary();
   }
+
 
   updateSettingsSummary() {
     if (!this.settingsSummary) return;
@@ -266,11 +286,13 @@ class RatioQuizApp {
     parts.push(this.getDifficultyName());
 
     if (this.drawMode.checked) {
-      parts.push("Draw");
+      parts.push(this.lineMode?.checked ? "Draw line" : "Draw");
+      if (this.polygonMode.checked) parts.push("Impossible");
     } else {
       parts.push(this.randomMode.checked ? "Random ratio" : "Fixed ratios");
-      if (this.areaScaleMode.checked) parts.push("Area scale");
-      if (this.polygonMode.checked) parts.push("Polygon");
+      if (this.areaScaleMode.checked) parts.push("Scale");
+      if (this.polygonMode.checked) parts.push("Impossible");
+      if (this.lineMode.checked) parts.push("Line");
     }
 
     if (this.timeMode.checked) parts.push("Timed");
@@ -375,6 +397,8 @@ class RatioQuizApp {
       modeText: this.modeLabel.textContent,
       userDrawBox: this.userDrawBox ? this.userDrawBox.slice() : null,
       answerDrawBox: this.answerDrawBox ? this.answerDrawBox.slice() : null,
+      userDrawLine: this.userDrawLine ? { ...this.userDrawLine } : null,
+      answerDrawLine: this.answerDrawLine ? { ...this.answerDrawLine } : null,
     };
   }
 
@@ -401,6 +425,14 @@ class RatioQuizApp {
 
     this.userDrawBox = snapshot.userDrawBox ? snapshot.userDrawBox.slice() : null;
     this.answerDrawBox = snapshot.answerDrawBox ? snapshot.answerDrawBox.slice() : null;
+    this.userDrawLine = snapshot.userDrawLine ? { ...snapshot.userDrawLine } : null;
+    this.answerDrawLine = snapshot.answerDrawLine ? { ...snapshot.answerDrawLine } : null;
+
+    if (this.currentDrawParams?.shape === "drawline") {
+      this.currentDrawParams.userLine = this.userDrawLine;
+      this.currentDrawParams.answerLine = this.answerDrawLine;
+    }
+
     this.dragStart = null;
     this.dragCurrent = null;
 
@@ -409,12 +441,7 @@ class RatioQuizApp {
     this.feedbackLabel.textContent = snapshot.feedback;
 
     this.resetOptionButtons();
-
-    if (this.currentDrawParams?.shape === "draw") {
-      this.drawFreehandAnswerCanvas(this.locked);
-    } else {
-      this.drawShape(this.currentDrawParams, this.locked && this.currentDrawParams?.shape === "polygon");
-    }
+    this.renderCurrentQuestionCanvas(this.locked);
 
     if (this.locked) {
       this.showResult(this.selectedIndex, this.selectedIndex === null, false);
@@ -429,6 +456,7 @@ class RatioQuizApp {
     this.updateNavButtons();
   }
 
+
   nextQuestion() {
     this.cancelTimer();
     this.cancelAutoNext();
@@ -440,6 +468,7 @@ class RatioQuizApp {
     if (this.historyIndex + 1 < this.history.length) {
       this.historyIndex += 1;
       this.loadSnapshot(this.history[this.historyIndex], true);
+      requestAnimationFrame(() => this.renderCurrentQuestionCanvas(this.locked));
       return;
     }
 
@@ -452,6 +481,8 @@ class RatioQuizApp {
     this.dragCurrent = null;
     this.userDrawBox = null;
     this.answerDrawBox = null;
+    this.userDrawLine = null;
+    this.answerDrawLine = null;
 
     let ratioModeText;
     let shapeText;
@@ -459,9 +490,11 @@ class RatioQuizApp {
 
     if (this.drawMode.checked) {
       this.currentOptionCount = 1;
-      ratioModeText = "draw target ratio";
+      ratioModeText = this.lineMode?.checked ? "draw target line ratio" : "draw target ratio";
       this.generateDrawModeQuestion();
-      shapeText = "blank drawing canvas";
+      shapeText = this.lineMode?.checked
+        ? (this.polygonMode.checked ? "restricted line draw" : "line draw")
+        : "blank drawing canvas";
       scaleText = "manual draw";
     } else {
       if (this.randomMode.checked) {
@@ -474,8 +507,15 @@ class RatioQuizApp {
         this.generateFixedQuestion();
       }
 
-      scaleText = this.areaScaleMode.checked ? "area scale on" : "area scale off";
-      shapeText = this.polygonMode.checked ? "complex polygon AABB" : "rectangle";
+      scaleText = this.areaScaleMode.checked ? "scale on" : "scale off";
+
+      if (this.lineMode.checked && this.polygonMode.checked) {
+        shapeText = "random line-pair";
+      } else if (this.lineMode.checked) {
+        shapeText = "parallel line-pair";
+      } else {
+        shapeText = this.polygonMode.checked ? "impossible polygon AABB" : "rectangle";
+      }
     }
 
     this.modeLabel.textContent = `Mode: ${ratioModeText} • ${scaleText} • ${shapeText}`;
@@ -483,12 +523,7 @@ class RatioQuizApp {
     this.currentDrawParams = this.generateDrawParams();
 
     this.resetOptionButtons();
-
-    if (this.drawMode.checked) {
-      this.drawFreehandAnswerCanvas(false);
-    } else {
-      this.drawShape(this.currentDrawParams);
-    }
+    this.renderCurrentQuestionCanvas(false);
 
     this.startTimer();
     this.updateScoreLabel();
@@ -498,12 +533,18 @@ class RatioQuizApp {
     this.updateNavButtons();
   }
 
+
   previousQuestion() {
     if (this.historyIndex <= 0) return;
 
     this.saveCurrentSnapshot();
     this.historyIndex -= 1;
     this.loadSnapshot(this.history[this.historyIndex], false);
+
+    // Some mobile/desktop browsers repaint the resized canvas one frame later.
+    // Force a second shape-based redraw so drawline history always shows the
+    // given red/blue reference line even before the user interacts.
+    requestAnimationFrame(() => this.renderCurrentQuestionCanvas(this.locked));
   }
 
   generateFixedQuestion() {
@@ -522,9 +563,13 @@ class RatioQuizApp {
     this.currentOptions = shuffle([...wrongs, correctPair]);
     this.correctIndex = this.currentOptions.findIndex(p => samePair(p, correctPair));
 
-    this.currentQuestionText = this.polygonMode.checked
-      ? "Choose the closest ratio of the polygon's axis-aligned bounding box."
-      : "Choose the closest ratio of the rectangle.";
+    if (this.lineMode.checked) {
+      this.currentQuestionText = "Choose the closest ratio of the two line lengths.";
+    } else {
+      this.currentQuestionText = this.polygonMode.checked
+        ? "Choose the closest ratio of the polygon's axis-aligned bounding box."
+        : "Choose the closest ratio of the rectangle.";
+    }
 
     this.questionLabel.textContent = this.currentQuestionText;
   }
@@ -541,9 +586,13 @@ class RatioQuizApp {
     this.currentOptions = shuffle([...wrongs, correctPair]);
     this.correctIndex = this.currentOptions.findIndex(p => samePair(p, correctPair));
 
-    this.currentQuestionText = this.polygonMode.checked
-      ? "Choose the closest integer ratio of the polygon's axis-aligned bounding box."
-      : "Choose the closest integer ratio to the shown rectangle.";
+    if (this.lineMode.checked) {
+      this.currentQuestionText = "Choose the closest integer ratio of the two line lengths.";
+    } else {
+      this.currentQuestionText = this.polygonMode.checked
+        ? "Choose the closest integer ratio of the polygon's axis-aligned bounding box."
+        : "Choose the closest integer ratio to the shown rectangle.";
+    }
 
     this.questionLabel.textContent = this.currentQuestionText;
   }
@@ -564,9 +613,20 @@ class RatioQuizApp {
     this.currentRatio = correctPair[0] / correctPair[1];
 
     const [a, b] = correctPair;
-    this.currentQuestionText =
-      `Draw a rectangle whose short side:long side is close to ${a}:${b}. ` +
-      `Tolerance: ±${(CONFIG.DRAW_TOLERANCE * 100).toFixed(0)}%.`;
+
+    if (this.lineMode?.checked) {
+      const startHint = this.polygonMode?.checked
+        ? " Start inside the gray dashed region; the endpoint may go outside."
+        : "";
+
+      this.currentQuestionText =
+        `Given one colored line, draw the other line so that short:long is close to ${a}:${b}. ` +
+        `Red means short, blue means long.${startHint} Tolerance: ±${(CONFIG.DRAW_TOLERANCE * 100).toFixed(0)}%.`;
+    } else {
+      this.currentQuestionText =
+        `Draw a rectangle whose short side:long side is close to ${a}:${b}. ` +
+        `Tolerance: ±${(CONFIG.DRAW_TOLERANCE * 100).toFixed(0)}%.`;
+    }
 
     this.questionLabel.textContent = this.currentQuestionText;
   }
@@ -633,7 +693,13 @@ class RatioQuizApp {
 
   generateDrawParams() {
     if (this.drawMode.checked) {
-      return { shape: "draw" };
+      return this.lineMode?.checked
+        ? this.generateDrawLineParams()
+        : { shape: "draw" };
+    }
+
+    if (this.lineMode?.checked) {
+      return this.generateLineDrawParams();
     }
 
     if (this.polygonMode.checked) {
@@ -642,6 +708,7 @@ class RatioQuizApp {
 
     return this.generateRectangleDrawParams();
   }
+
 
   getScaledLongSide() {
     if (this.areaScaleMode.checked) {
@@ -652,6 +719,206 @@ class RatioQuizApp {
     }
 
     return { longSide: CONFIG.RECT_LONG_SIDE, areaScale: 1.0 };
+  }
+
+
+
+  normalizeLineLengthsForVisibility(longLen, shortLen, ratio) {
+    const minLen = CONFIG.MIN_VISIBLE_LINE_LENGTH;
+    const maxLen = CONFIG.MAX_VISIBLE_LINE_LENGTH;
+
+    if (shortLen < minLen) {
+      const scale = minLen / Math.max(shortLen, 1e-9);
+      longLen *= scale;
+      shortLen *= scale;
+    }
+
+    if (longLen > maxLen) {
+      longLen = maxLen;
+      shortLen = longLen * ratio;
+    }
+
+    // For very small ratios, re-expand once after clamping.
+    if (shortLen < minLen && ratio > 0) {
+      shortLen = minLen;
+      longLen = Math.min(maxLen, shortLen / ratio);
+    }
+
+    return { longLen, shortLen };
+  }
+
+  generateDrawLineParams() {
+    const ratio = this.currentRatio;
+    const baseLong = 210;
+    let longLen = baseLong;
+    let shortLen = longLen * ratio;
+    ({ longLen, shortLen } = this.normalizeLineLengthsForVisibility(longLen, shortLen, ratio));
+
+    const givenRole = Math.random() < 0.5 ? "short" : "long";
+    const targetRole = givenRole === "short" ? "long" : "short";
+    const givenLength = givenRole === "short" ? shortLen : longLen;
+    const targetLength = targetRole === "short" ? shortLen : longLen;
+    const color = givenRole === "short" ? CONFIG.LINE_SHORT_COLOR : CONFIG.LINE_LONG_COLOR;
+
+    const angle = rand(0, 2 * Math.PI);
+    const givenLine = this.generateRandomLineSegment(givenLength, 44, angle);
+
+    const restrictBox = this.polygonMode?.checked
+      ? this.generateDrawLineStartRestrictionBox(givenLine)
+      : null;
+
+    return {
+      shape: "drawline",
+      givenRole,
+      targetRole,
+      givenLength,
+      targetLength,
+      longLength: longLen,
+      shortLength: shortLen,
+      givenLine,
+      color,
+      restrictBox,
+      userLine: null,
+      answerLine: null,
+    };
+  }
+
+  pointInBox(x, y, box) {
+    if (!box) return true;
+    const [left, top, right, bottom] = box;
+    return x >= left && x <= right && y >= top && y <= bottom;
+  }
+
+  drawRestrictionBox(box) {
+    if (!box) return;
+    const [left, top, right, bottom] = box;
+
+    this.ctx.save();
+    this.ctx.strokeStyle = CONFIG.RESTRICT_BOX_COLOR || CONFIG.BBOX_COLOR;
+    this.ctx.lineWidth = 1;
+    this.ctx.setLineDash([7, 6]);
+    this.ctx.strokeRect(left, top, right - left, bottom - top);
+    this.ctx.restore();
+  }
+
+  generateDrawLineStartRestrictionBox(givenLine) {
+    const candidates = [
+      [42, 42, 210, 160],
+      [CONFIG.CANVAS_W - 210, 42, CONFIG.CANVAS_W - 42, 160],
+      [42, CONFIG.CANVAS_H - 160, 210, CONFIG.CANVAS_H - 42],
+      [CONFIG.CANVAS_W - 210, CONFIG.CANVAS_H - 160, CONFIG.CANVAS_W - 42, CONFIG.CANVAS_H - 42],
+      [CONFIG.CANVAS_W / 2 - 90, 42, CONFIG.CANVAS_W / 2 + 90, 160],
+      [CONFIG.CANVAS_W / 2 - 90, CONFIG.CANVAS_H - 160, CONFIG.CANVAS_W / 2 + 90, CONFIG.CANVAS_H - 42],
+    ];
+
+    const scored = candidates
+      .map(box => ({ box, distance: this.distanceBetweenSegmentAndBox(givenLine, box) }))
+      .sort((a, b) => b.distance - a.distance);
+
+    const farEnough = scored.find(item => item.distance >= 70);
+    return (farEnough || scored[0]).box;
+  }
+
+  distanceBetweenSegmentAndBox(seg, box) {
+    const [left, top, right, bottom] = box;
+    const samples = 24;
+    let best = Infinity;
+
+    for (let i = 0; i <= samples; ++i) {
+      const t = i / samples;
+      const x = seg.x1 + (seg.x2 - seg.x1) * t;
+      const y = seg.y1 + (seg.y2 - seg.y1) * t;
+      const dx = Math.max(left - x, 0, x - right);
+      const dy = Math.max(top - y, 0, y - bottom);
+      best = Math.min(best, Math.hypot(dx, dy));
+    }
+
+    return best;
+  }
+
+  generateLineDrawParams() {
+    const ratio = this.currentRatio;
+    const { longSide, areaScale } = this.getScaledLongSide();
+    let longLen = longSide;
+    let shortLen = longSide * ratio;
+    ({ longLen, shortLen } = this.normalizeLineLengthsForVisibility(longLen, shortLen, ratio));
+    const margin = 36;
+
+    if (this.polygonMode.checked) {
+      return {
+        shape: "linepair",
+        mode: "free",
+        longLine: this.generateRandomLineSegment(longLen, margin),
+        shortLine: this.generateRandomLineSegment(shortLen, margin),
+        areaScale,
+      };
+    }
+
+    const angle = rand(0, 2 * Math.PI);
+    const normal = [-Math.sin(angle), Math.cos(angle)];
+    const offset = rand(50, 90) * (Math.random() < 0.5 ? -1 : 1);
+
+    for (let i = 0; i < 200; ++i) {
+      const cx = rand(margin, CONFIG.CANVAS_W - margin);
+      const cy = rand(margin, CONFIG.CANVAS_H - margin);
+
+      const longCenter = [cx + normal[0] * offset / 2, cy + normal[1] * offset / 2];
+      const shortCenter = [cx - normal[0] * offset / 2, cy - normal[1] * offset / 2];
+
+      const longLine = this.segmentFromCenter(longCenter[0], longCenter[1], longLen, angle);
+      const shortLine = this.segmentFromCenter(shortCenter[0], shortCenter[1], shortLen, angle);
+
+      if (this.segmentInside(longLine, margin) && this.segmentInside(shortLine, margin)) {
+        return { shape: "linepair", mode: "parallel", longLine, shortLine, angle, areaScale };
+      }
+    }
+
+    return {
+      shape: "linepair",
+      mode: "parallel",
+      longLine: this.segmentFromCenter(CONFIG.CANVAS_W / 2, CONFIG.CANVAS_H / 2 - 34, longLen, 0),
+      shortLine: this.segmentFromCenter(CONFIG.CANVAS_W / 2, CONFIG.CANVAS_H / 2 + 34, shortLen, 0),
+      angle: 0,
+      areaScale,
+    };
+  }
+
+  generateRandomLineSegment(length, margin, forcedAngle = null) {
+    for (let i = 0; i < 100; ++i) {
+      const angle = forcedAngle ?? rand(0, 2 * Math.PI);
+      const halfW = Math.abs(Math.cos(angle)) * length / 2;
+      const halfH = Math.abs(Math.sin(angle)) * length / 2;
+
+      const minX = margin + halfW;
+      const maxX = CONFIG.CANVAS_W - margin - halfW;
+      const minY = margin + halfH;
+      const maxY = CONFIG.CANVAS_H - margin - halfH;
+
+      if (minX < maxX && minY < maxY) {
+        return this.segmentFromCenter(rand(minX, maxX), rand(minY, maxY), length, angle);
+      }
+    }
+
+    return this.segmentFromCenter(CONFIG.CANVAS_W / 2, CONFIG.CANVAS_H / 2, length, 0);
+  }
+
+  segmentFromCenter(cx, cy, length, angle) {
+    const dx = Math.cos(angle) * length / 2;
+    const dy = Math.sin(angle) * length / 2;
+    return { x1: cx - dx, y1: cy - dy, x2: cx + dx, y2: cy + dy, length, angle };
+  }
+
+  segmentCenter(seg) {
+    return [(seg.x1 + seg.x2) / 2, (seg.y1 + seg.y2) / 2];
+  }
+
+  segmentInside(seg, margin) {
+    return (
+      seg.x1 >= margin && seg.x1 <= CONFIG.CANVAS_W - margin &&
+      seg.x2 >= margin && seg.x2 <= CONFIG.CANVAS_W - margin &&
+      seg.y1 >= margin && seg.y1 <= CONFIG.CANVAS_H - margin &&
+      seg.y2 >= margin && seg.y2 <= CONFIG.CANVAS_H - margin
+    );
   }
 
   generateRectangleDrawParams() {
@@ -780,11 +1047,38 @@ class RatioQuizApp {
   redrawCurrent() {
     if (!this.currentDrawParams) return;
 
-    if (this.currentDrawParams.shape === "draw") {
-      this.drawFreehandAnswerCanvas(this.locked, this.currentDragBox());
+    if (this.currentDrawParams.shape === "drawline") {
+      this.renderCurrentQuestionCanvas(this.locked, this.currentDragLine());
+    } else if (this.currentDrawParams.shape === "draw") {
+      this.renderCurrentQuestionCanvas(this.locked, this.currentDragBox());
     } else {
-      this.drawShape(this.currentDrawParams, this.locked && this.currentDrawParams.shape === "polygon");
+      this.renderCurrentQuestionCanvas(this.locked);
     }
+  }
+
+
+  renderCurrentQuestionCanvas(showAnswer = false, preview = null) {
+    if (!this.currentDrawParams) return;
+
+    if (this.currentDrawParams.shape === "drawline") {
+      this.drawFreehandLineCanvas(showAnswer, preview);
+      return;
+    }
+
+    if (this.currentDrawParams.shape === "draw") {
+      this.drawFreehandAnswerCanvas(showAnswer, preview);
+      return;
+    }
+
+    this.drawShape(
+      this.currentDrawParams,
+      showAnswer && this.shouldShowRevealGuide(this.currentDrawParams)
+    );
+  }
+
+
+  shouldShowRevealGuide(params) {
+    return !!params && (params.shape === "polygon" || params.shape === "linepair");
   }
 
   drawShape(params, showAabb = false) {
@@ -795,7 +1089,9 @@ class RatioQuizApp {
     this.ctx.lineJoin = "round";
     this.ctx.lineCap = "round";
 
-    if (params.shape === "polygon") {
+    if (params.shape === "linepair") {
+      this.drawLinePair(params, showAabb);
+    } else if (params.shape === "polygon") {
       this.drawPolygon(params, showAabb);
     } else {
       this.drawRectangle(params);
@@ -803,6 +1099,130 @@ class RatioQuizApp {
 
     this.ctx.restore();
   }
+
+
+  drawLinePair(params, showGuide = false) {
+    this.ctx.save();
+    this.ctx.lineCap = "butt";
+    this.ctx.lineJoin = "miter";
+    this.ctx.lineWidth = CONFIG.LINE_WIDTH;
+    this.ctx.strokeStyle = CONFIG.RECT_COLOR;
+
+    // Normal stage: only draw the two raw black line segments.
+    // Keep the same visual weight as rectangle outlines and do not add endpoint ticks.
+    this.strokeSegment(params.longLine);
+    this.strokeSegment(params.shortLine);
+
+    if (showGuide) {
+      this.drawLineSegmentReveal(params);
+    }
+
+    this.ctx.restore();
+  }
+
+  strokeSegment(seg) {
+    this.ctx.beginPath();
+    this.ctx.moveTo(seg.x1, seg.y1);
+    this.ctx.lineTo(seg.x2, seg.y2);
+    this.ctx.stroke();
+  }
+
+  drawLineEndpointTicks(seg, color = CONFIG.RECT_COLOR, width = CONFIG.LINE_WIDTH) {
+    const angle = Math.atan2(seg.y2 - seg.y1, seg.x2 - seg.x1);
+    const normal = [-Math.sin(angle), Math.cos(angle)];
+    const tick = 5;
+
+    this.ctx.save();
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = width;
+
+    for (const point of [[seg.x1, seg.y1], [seg.x2, seg.y2]]) {
+      const [x, y] = point;
+      this.ctx.beginPath();
+      this.ctx.moveTo(x - normal[0] * tick, y - normal[1] * tick);
+      this.ctx.lineTo(x + normal[0] * tick, y + normal[1] * tick);
+      this.ctx.stroke();
+    }
+
+    this.ctx.restore();
+  }
+
+  drawLineSegmentReveal(params) {
+    const [a, b] = this.currentOptions[this.correctIndex];
+
+    // Reveal is drawn directly on top of the original longer line:
+    // a units in red + (b-a) units in blue.
+    // Example 2:5 -> 2 red unit segments + 3 blue unit segments.
+    this.drawRatioSplitOnLine(params.longLine, a, b);
+
+    // Endpoints are shown only during the answer reveal stage.
+    this.drawLineEndpointTicks(params.longLine, CONFIG.LINE_LONG_COLOR, 1.5);
+    this.drawLineEndpointTicks(params.shortLine, CONFIG.RECT_COLOR, CONFIG.LINE_WIDTH);
+  }
+
+  drawRatioSplitOnLine(seg, a, b) {
+    const x1 = seg.x1;
+    const y1 = seg.y1;
+    const x2 = seg.x2;
+    const y2 = seg.y2;
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    if (b <= 0) return;
+
+    const splitT = Math.max(0, Math.min(1, a / b));
+    const sx = x1 + dx * splitT;
+    const sy = y1 + dy * splitT;
+
+    this.ctx.save();
+    this.ctx.lineCap = "butt";
+    this.ctx.lineWidth = Math.max(3, CONFIG.LINE_WIDTH * 3);
+
+    this.ctx.strokeStyle = CONFIG.LINE_SHORT_COLOR;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x1, y1);
+    this.ctx.lineTo(sx, sy);
+    this.ctx.stroke();
+
+    this.ctx.strokeStyle = CONFIG.LINE_LONG_COLOR;
+    this.ctx.beginPath();
+    this.ctx.moveTo(sx, sy);
+    this.ctx.lineTo(x2, y2);
+    this.ctx.stroke();
+
+    // Unit separators make the ratio reading explicit.
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeStyle = "#ffffff";
+    const angle = Math.atan2(dy, dx);
+    const normal = [-Math.sin(angle), Math.cos(angle)];
+    const sep = 5;
+
+    for (let i = 1; i < b; ++i) {
+      const t = i / b;
+      const px = x1 + dx * t;
+      const py = y1 + dy * t;
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(px - normal[0] * sep, py - normal[1] * sep);
+      this.ctx.lineTo(px + normal[0] * sep, py + normal[1] * sep);
+      this.ctx.stroke();
+    }
+
+    // Outer endpoints for the colored reveal line.
+    this.ctx.strokeStyle = CONFIG.RECT_COLOR;
+    this.ctx.lineWidth = 1;
+    for (const point of [[x1, y1], [x2, y2]]) {
+      const [px, py] = point;
+      this.ctx.beginPath();
+      this.ctx.moveTo(px - normal[0] * sep, py - normal[1] * sep);
+      this.ctx.lineTo(px + normal[0] * sep, py + normal[1] * sep);
+      this.ctx.stroke();
+    }
+
+    this.ctx.restore();
+  }
+
 
   drawRectangle(params) {
     const { w, h, angle, cx, cy } = params;
@@ -890,16 +1310,35 @@ class RatioQuizApp {
     if (!this.questionActive || this.locked) return;
 
     event.preventDefault();
-    this.canvas.setPointerCapture(event.pointerId);
 
     const [x, y] = this.canvasPoint(event);
+
+    if (
+      this.currentDrawParams?.shape === "drawline" &&
+      this.currentDrawParams.restrictBox &&
+      !this.pointInBox(x, y, this.currentDrawParams.restrictBox)
+    ) {
+      this.feedbackLabel.textContent = "Start inside the gray dashed region. You may drag outside it after starting.";
+      this.drawFreehandLineCanvas(false);
+      return;
+    }
+
+    this.canvas.setPointerCapture(event.pointerId);
+
     this.dragStart = [x, y];
     this.dragCurrent = [x, y];
-    this.userDrawBox = null;
-    this.answerDrawBox = null;
 
-    this.drawFreehandAnswerCanvas(false);
+    if (this.currentDrawParams?.shape === "drawline") {
+      this.userDrawLine = null;
+      this.answerDrawLine = null;
+      this.drawFreehandLineCanvas(false);
+    } else {
+      this.userDrawBox = null;
+      this.answerDrawBox = null;
+      this.drawFreehandAnswerCanvas(false);
+    }
   }
+
 
   onCanvasPointerMove(event) {
     if (!this.drawMode.checked) return;
@@ -911,7 +1350,11 @@ class RatioQuizApp {
     const [x, y] = this.canvasPoint(event);
     this.dragCurrent = [x, y];
 
-    this.drawFreehandAnswerCanvas(false, this.currentDragBox());
+    if (this.currentDrawParams?.shape === "drawline") {
+      this.drawFreehandLineCanvas(false, this.currentDragLine());
+    } else {
+      this.drawFreehandAnswerCanvas(false, this.currentDragBox());
+    }
   }
 
   onCanvasPointerUp(event) {
@@ -926,6 +1369,11 @@ class RatioQuizApp {
 
     const [x, y] = this.canvasPoint(event);
     this.dragCurrent = [x, y];
+
+    if (this.currentDrawParams?.shape === "drawline") {
+      this.finishDrawLineAnswer();
+      return;
+    }
 
     const box = this.currentDragBox();
     this.dragStart = null;
@@ -971,6 +1419,216 @@ class RatioQuizApp {
     this.saveCurrentSnapshot();
     this.updateNavButtons();
   }
+
+
+  currentDragLine() {
+    if (!this.dragStart || !this.dragCurrent) return null;
+
+    const [x1, y1] = this.dragStart;
+    const [x2, y2] = this.dragCurrent;
+    const length = Math.hypot(x2 - x1, y2 - y1);
+
+    if (length < 8) return null;
+
+    return {
+      x1,
+      y1,
+      x2,
+      y2,
+      length,
+      angle: Math.atan2(y2 - y1, x2 - x1),
+    };
+  }
+
+  finishDrawLineAnswer() {
+    const line = this.currentDragLine();
+    this.dragStart = null;
+    this.dragCurrent = null;
+
+    if (!line) {
+      this.feedbackLabel.textContent = "The line is too short. Please draw a longer one.";
+      this.drawFreehandLineCanvas(false);
+      return;
+    }
+
+    this.userDrawLine = line;
+
+    const targetLength = this.currentDrawParams.targetLength;
+    const userLength = line.length;
+    const logError = Math.abs(Math.log(userLength / targetLength));
+    const success = logError <= CONFIG.DRAW_LOG_TOLERANCE;
+    const displayError = (Math.exp(logError) - 1.0) * 100.0;
+
+    this.answerDrawLine = this.computeLongBaselineGuideFromUserLine(line);
+
+    this.locked = true;
+    this.questionActive = false;
+    this.cancelTimer();
+    this.cancelAutoNext();
+
+    this.scoreTotal += 1;
+    if (success) {
+      this.scoreCorrect += 1;
+      this.selectedIndex = this.correctIndex;
+      this.optionButtons[0].classList.add(CONFIG.BTN_CORRECT_CLASS);
+    } else {
+      this.selectedIndex = -1;
+      this.optionButtons[0].classList.add(CONFIG.BTN_WRONG_CLASS);
+    }
+
+    const [a, b] = this.currentOptions[this.correctIndex];
+    const givenText = this.currentDrawParams.givenRole === "short" ? "given short red line" : "given long blue line";
+    const targetText = this.currentDrawParams.targetRole === "short" ? "short line" : "long line";
+
+    this.feedbackLabel.textContent =
+      `${success ? "Correct." : "Incorrect."} Target ratio: ${a}:${b}. ` +
+      `${givenText}; draw the ${targetText}. ` +
+      `Your length: ${userLength.toFixed(1)}. Target length: ${targetLength.toFixed(1)}. ` +
+      `The red/blue guide is split on the long-side baseline. ` +
+      `Log-ratio error: ${displayError.toFixed(1)}%.`;
+
+    this.drawFreehandLineCanvas(true);
+    this.updateScoreLabel();
+    this.saveCurrentSnapshot();
+    this.updateNavButtons();
+  }
+
+  computeLongBaselineGuideFromUserLine(userLine) {
+    const longLength = this.currentDrawParams.longLength;
+    const angle = Math.atan2(userLine.y2 - userLine.y1, userLine.x2 - userLine.x1);
+    const normal = [-Math.sin(angle), Math.cos(angle)];
+
+    // The reveal guide must always be based on the LONG side, even if the user
+    // was asked to draw the short side. Therefore the red+blue split is drawn
+    // on a line of length `longLength`, parallel to the user's stroke.
+    //
+    // If the user drew the long side, the guide uses the user's drawn start.
+    // If the user drew the short side, the guide is still a nearby long-side
+    // reference line, not a split of the short line.
+    const offsetCandidates = [18, -18, 28, -28, 38, -38, 0];
+
+    for (const offset of offsetCandidates) {
+      const x1 = userLine.x1 + normal[0] * offset;
+      const y1 = userLine.y1 + normal[1] * offset;
+      const x2 = x1 + Math.cos(angle) * longLength;
+      const y2 = y1 + Math.sin(angle) * longLength;
+
+      const candidate = { x1, y1, x2, y2, length: longLength, angle };
+
+      if (this.segmentInside(candidate, 8)) {
+        return candidate;
+      }
+    }
+
+    return {
+      x1: userLine.x1,
+      y1: userLine.y1,
+      x2: userLine.x1 + Math.cos(angle) * longLength,
+      y2: userLine.y1 + Math.sin(angle) * longLength,
+      length: longLength,
+      angle,
+    };
+  }
+
+
+  drawFreehandLineCanvas(showAnswer, previewLine = null) {
+    this.clearCanvas();
+
+    if (!this.currentDrawParams || this.currentDrawParams.shape !== "drawline") return;
+
+    const given = this.currentDrawParams.givenLine;
+
+    this.drawRestrictionBox(this.currentDrawParams.restrictBox);
+
+    if (given) {
+      this.ctx.save();
+      this.ctx.lineWidth = Math.max(3, CONFIG.LINE_WIDTH * 3);
+      this.ctx.lineCap = "round";
+      this.ctx.strokeStyle = this.currentDrawParams.color;
+      this.strokeSegment(given);
+      this.ctx.restore();
+    }
+
+    const lineToDraw = previewLine || this.userDrawLine;
+    if (lineToDraw) {
+      this.ctx.save();
+      this.ctx.strokeStyle = CONFIG.RECT_COLOR;
+      this.ctx.lineWidth = CONFIG.LINE_WIDTH;
+      this.ctx.lineCap = "round";
+      this.strokeSegment(lineToDraw);
+      this.ctx.restore();
+    }
+
+    if (showAnswer && this.answerDrawLine) {
+      this.drawDrawModeRatioGuide(this.answerDrawLine);
+    }
+  }
+
+
+  drawDrawModeRatioGuide(seg) {
+    const [a, b] = this.currentOptions[this.correctIndex];
+    const x1 = seg.x1;
+    const y1 = seg.y1;
+    const x2 = seg.x2;
+    const y2 = seg.y2;
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    if (b <= 0) return;
+
+    const splitT = Math.max(0, Math.min(1, a / b));
+    const sx = x1 + dx * splitT;
+    const sy = y1 + dy * splitT;
+
+    const angle = Math.atan2(dy, dx);
+    const normal = [-Math.sin(angle), Math.cos(angle)];
+    const sep = 5;
+
+    this.ctx.save();
+    this.ctx.lineCap = "butt";
+    this.ctx.lineWidth = Math.max(3, CONFIG.LINE_WIDTH * 3);
+
+    this.ctx.strokeStyle = CONFIG.LINE_SHORT_COLOR;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x1, y1);
+    this.ctx.lineTo(sx, sy);
+    this.ctx.stroke();
+
+    this.ctx.strokeStyle = CONFIG.LINE_LONG_COLOR;
+    this.ctx.beginPath();
+    this.ctx.moveTo(sx, sy);
+    this.ctx.lineTo(x2, y2);
+    this.ctx.stroke();
+
+    // Unit separators.
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeStyle = "#ffffff";
+    for (let i = 1; i < b; ++i) {
+      const t = i / b;
+      const px = x1 + dx * t;
+      const py = y1 + dy * t;
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(px - normal[0] * sep, py - normal[1] * sep);
+      this.ctx.lineTo(px + normal[0] * sep, py + normal[1] * sep);
+      this.ctx.stroke();
+    }
+
+    // Endpoints only on the answer guide.
+    this.ctx.strokeStyle = CONFIG.RECT_COLOR;
+    this.ctx.lineWidth = 1;
+    for (const point of [[x1, y1], [x2, y2]]) {
+      const [px, py] = point;
+      this.ctx.beginPath();
+      this.ctx.moveTo(px - normal[0] * sep, py - normal[1] * sep);
+      this.ctx.lineTo(px + normal[0] * sep, py + normal[1] * sep);
+      this.ctx.stroke();
+    }
+
+    this.ctx.restore();
+  }
+
 
   currentDragBox() {
     if (!this.dragStart || !this.dragCurrent) return null;
@@ -1165,7 +1823,7 @@ class RatioQuizApp {
       this.optionButtons[i].disabled = true;
     }
 
-    if (redraw && this.currentDrawParams?.shape === "polygon") {
+    if (redraw && this.shouldShowRevealGuide(this.currentDrawParams)) {
       this.drawShape(this.currentDrawParams, true);
     }
 
